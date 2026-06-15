@@ -1,0 +1,2083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="FlashSnap"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="theme-color" content="#6c63ff"/>
+<link rel="manifest" href="manifest.json"/>
+<title>FlashSnap</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg:#06070f;--bg2:#0b0d1a;
+  --surface:rgba(255,255,255,.04);--surface2:rgba(255,255,255,.07);
+  --border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.12);
+  --accent:#6c63ff;--accent2:#ff6584;--accent3:#43e97b;
+  --gold:#ffd700;--text:#f0f0ff;--muted:#a8a8c0;--dim:#5a5a7a;--faint:#2a2a3a;
+  --green:#43e97b;--red:#ff6584;--yellow:#ffd700;
+  --font-head:'Syne',sans-serif;--font-body:'Plus Jakarta Sans',sans-serif;
+}
+html,body{height:100%;background:var(--bg);font-family:var(--font-body);color:var(--text);overflow-x:hidden;}
+body{padding-bottom:80px;}
+
+.bg-mesh{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;}
+.bg-mesh::before{content:'';position:absolute;width:600px;height:600px;background:radial-gradient(circle,rgba(108,99,255,.18) 0%,transparent 70%);top:-200px;left:-200px;animation:drift1 12s ease-in-out infinite alternate;}
+.bg-mesh::after{content:'';position:absolute;width:500px;height:500px;background:radial-gradient(circle,rgba(255,101,132,.12) 0%,transparent 70%);bottom:-150px;right:-150px;animation:drift2 10s ease-in-out infinite alternate;}
+@keyframes drift1{from{transform:translate(0,0) scale(1)}to{transform:translate(60px,40px) scale(1.1)}}
+@keyframes drift2{from{transform:translate(0,0) scale(1)}to{transform:translate(-40px,30px) scale(1.15)}}
+.bg-grid{position:fixed;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(rgba(108,99,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(108,99,255,.04) 1px,transparent 1px);background-size:40px 40px;}
+
+/* HEADER */
+.header{position:relative;z-index:10;padding:52px 22px 14px;display:flex;align-items:flex-start;justify-content:space-between;}
+.logo{font-family:var(--font-head);font-size:2.1rem;font-weight:800;letter-spacing:-1.5px;background:linear-gradient(135deg,#fff 0%,#a78bfa 50%,#6c63ff 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.logo-sub{font-size:.7rem;color:var(--dim);margin-top:3px;letter-spacing:1px;text-transform:uppercase;}
+.gemini-badge{display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,rgba(108,99,255,.2),rgba(255,101,132,.15));border:1px solid rgba(108,99,255,.3);border-radius:20px;padding:5px 12px;font-size:.65rem;color:#c4b5fd;margin-top:8px;letter-spacing:.5px;}
+
+/* SCREENS */
+.screen{position:relative;z-index:10;padding:0 18px 30px;display:none;}
+.screen.active{display:block;}
+
+/* BOTTOM NAV */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:100;background:rgba(6,7,15,.95);backdrop-filter:blur(30px);border-top:1px solid rgba(108,99,255,.15);display:flex;padding:10px 0 24px;}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:var(--dim);font-family:var(--font-body);font-size:.55rem;font-weight:600;letter-spacing:.8px;text-transform:uppercase;cursor:pointer;transition:all .2s;padding:6px 0;}
+.nav-btn.active{color:#a78bfa;}
+.nav-btn.active .nav-icon-wrap{background:rgba(108,99,255,.2);border-color:rgba(108,99,255,.4);}
+.nav-icon-wrap{width:36px;height:36px;border-radius:12px;display:flex;align-items:center;justify-content:center;border:1px solid transparent;transition:all .2s;}
+.nav-icon{font-size:1.15rem;}
+
+/* HOME */
+.empty-home{text-align:center;padding:80px 20px;}
+.empty-icon{font-size:4rem;margin-bottom:16px;filter:drop-shadow(0 0 20px rgba(108,99,255,.4));}
+.empty-home h3{font-family:var(--font-head);font-size:1.2rem;color:var(--dim);margin-bottom:10px;}
+.empty-home p{font-size:.82rem;color:var(--faint);line-height:1.8;}
+.section-lbl{font-size:.65rem;text-transform:uppercase;letter-spacing:2.5px;color:var(--dim);margin:22px 0 12px;display:flex;align-items:center;gap:8px;}
+.section-lbl::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* SUBJECT CARD */
+.subject-card{background:linear-gradient(135deg,rgba(255,255,255,.05),rgba(255,255,255,.02));border:1px solid var(--border);border-radius:18px;padding:16px;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;gap:14px;position:relative;overflow:hidden;transition:all .2s;}
+.subject-card:active{transform:scale(.98);}
+.s-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;}
+.c0{background:linear-gradient(135deg,rgba(108,99,255,.3),rgba(108,99,255,.1));}
+.c1{background:linear-gradient(135deg,rgba(67,233,123,.3),rgba(67,233,123,.1));}
+.c2{background:linear-gradient(135deg,rgba(255,101,132,.3),rgba(255,101,132,.1));}
+.c3{background:linear-gradient(135deg,rgba(255,215,0,.3),rgba(255,215,0,.1));}
+.c4{background:linear-gradient(135deg,rgba(138,43,226,.3),rgba(138,43,226,.1));}
+.c5{background:linear-gradient(135deg,rgba(0,212,255,.3),rgba(0,212,255,.1));}
+.s-info{flex:1;min-width:0;}
+.s-name{font-family:var(--font-head);font-size:.98rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.s-meta{font-size:.7rem;color:var(--dim);margin-top:3px;}
+.s-score{font-size:.68rem;margin-top:4px;}
+.s-score .correct{color:var(--green);}
+.s-score .wrong{color:var(--red);}
+
+/* ADD SCREEN */
+.screen-title{font-family:var(--font-head);font-size:1.6rem;font-weight:800;margin-bottom:5px;background:linear-gradient(135deg,#fff,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.screen-sub{font-size:.8rem;color:var(--dim);margin-bottom:26px;line-height:1.6;}
+.input-lbl{font-size:.65rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--dim);margin-bottom:8px;display:block;}
+.input-group{margin-bottom:20px;}
+.inp{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:14px;padding:14px 16px;color:var(--text);font-family:var(--font-body);font-size:.95rem;outline:none;transition:all .2s;}
+.inp:focus{border-color:rgba(108,99,255,.5);background:rgba(108,99,255,.05);}
+.inp::placeholder{color:var(--faint);}
+.upload-box{border:2px dashed rgba(108,99,255,.25);border-radius:18px;padding:34px 20px;text-align:center;cursor:pointer;transition:all .3s;background:rgba(108,99,255,.03);}
+.upload-box.drag{border-color:rgba(108,99,255,.6);background:rgba(108,99,255,.08);}
+.u-icon{font-size:2.5rem;margin-bottom:12px;}
+.upload-box h3{font-size:.95rem;font-weight:600;color:var(--muted);margin-bottom:5px;}
+.upload-box p{font-size:.75rem;color:var(--faint);}
+.prev-img{width:100%;max-height:190px;object-fit:cover;border-radius:12px;margin-top:14px;border:1px solid var(--border);}
+.btn-primary{display:block;width:100%;padding:16px;background:linear-gradient(135deg,#6c63ff,#8b5cf6);color:#fff;border:none;border-radius:14px;font-size:1rem;font-weight:700;font-family:var(--font-body);cursor:pointer;transition:all .2s;margin-top:14px;box-shadow:0 4px 20px rgba(108,99,255,.3);}
+.btn-primary:active{transform:scale(.98);}
+.btn-primary:disabled{background:var(--faint);color:var(--dim);cursor:not-allowed;box-shadow:none;transform:none;}
+.error-box{padding:13px 16px;background:rgba(255,101,132,.08);border:1px solid rgba(255,101,132,.2);border-radius:12px;font-size:.83rem;color:#ff6584;margin-top:14px;line-height:1.5;}
+
+/* LOADING */
+.loading-wrap{text-align:center;padding:100px 20px;}
+.spinner{width:52px;height:52px;border:3px solid rgba(108,99,255,.15);border-top-color:#6c63ff;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 24px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-wrap h3{font-family:var(--font-head);font-size:1.2rem;margin-bottom:8px;background:linear-gradient(135deg,#fff,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.loading-wrap p{font-size:.82rem;color:var(--dim);}
+.loading-dots span{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin:0 3px;animation:bounce 1.2s infinite;}
+.loading-dots span:nth-child(2){animation-delay:.2s;background:#8b5cf6;}
+.loading-dots span:nth-child(3){animation-delay:.4s;background:#a78bfa;}
+@keyframes bounce{0%,80%,100%{transform:scale(.4);opacity:.3}40%{transform:scale(1);opacity:1}}
+
+/* DETAIL */
+.back-btn{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;padding:9px 14px;color:var(--muted);font-family:var(--font-body);font-size:.82rem;cursor:pointer;margin-bottom:18px;width:fit-content;transition:all .2s;}
+.back-btn:active{background:rgba(255,255,255,.08);}
+.d-name{font-family:var(--font-head);font-size:1.6rem;font-weight:800;margin-bottom:4px;background:linear-gradient(135deg,#fff,#c4b5fd);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.d-meta{font-size:.75rem;color:var(--dim);margin-bottom:18px;}
+.stats-row{display:flex;gap:10px;margin-bottom:20px;}
+.stat-box{flex:1;background:linear-gradient(135deg,rgba(255,255,255,.05),rgba(255,255,255,.02));border:1px solid var(--border);border-radius:16px;padding:16px 10px;text-align:center;}
+.stat-n{font-family:var(--font-head);font-size:1.6rem;font-weight:800;}
+.stat-n.def{background:linear-gradient(135deg,#fff,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.stat-n.green{color:var(--green);}
+.stat-n.red{color:var(--red);}
+.stat-l{font-size:.6rem;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin-top:4px;}
+.score-bar-wrap{margin-bottom:20px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:14px;padding:14px 16px;}
+.score-bar-top{display:flex;justify-content:space-between;font-size:.75rem;color:var(--dim);margin-bottom:10px;}
+.score-bar{height:8px;background:rgba(255,255,255,.06);border-radius:10px;overflow:hidden;}
+.score-bar-fill{height:100%;background:linear-gradient(90deg,#6c63ff,#43e97b);border-radius:10px;transition:width .6s cubic-bezier(.34,1.56,.64,1);}
+.tab-row{display:flex;gap:6px;margin-bottom:18px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:14px;padding:5px;}
+.tab-btn{flex:1;padding:9px 6px;background:transparent;border:none;border-radius:10px;color:var(--dim);font-family:var(--font-body);font-size:.72rem;font-weight:600;cursor:pointer;transition:all .2s;text-align:center;}
+.tab-btn.active{background:linear-gradient(135deg,rgba(108,99,255,.3),rgba(108,99,255,.15));color:#c4b5fd;}
+
+/* ── SWIPE DECK ── */
+.swipe-deck-wrap{position:relative;width:100%;height:560px;margin-bottom:14px;touch-action:none;}
+.swipe-card{position:absolute;inset:0;background:linear-gradient(145deg,#0e0f20,#090a16);border:1px solid rgba(108,99,255,.2);border-radius:24px;overflow:hidden;cursor:grab;user-select:none;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.4);}
+.swipe-card:active{cursor:grabbing;}
+.swipe-card.is-dragging{transition:none;}
+.swipe-card.fly-left{transition:transform .35s ease,opacity .35s;transform:translateX(-130%) rotate(-18deg)!important;opacity:0;}
+.swipe-card.fly-right{transition:transform .35s ease,opacity .35s;transform:translateX(130%) rotate(18deg)!important;opacity:0;}
+.swipe-card.reset{transition:transform .3s cubic-bezier(.34,1.56,.64,1);}
+.swipe-card.behind-1{transform:scale(.95) translateY(10px);z-index:1;pointer-events:none;opacity:.8;}
+.swipe-card.behind-2{transform:scale(.90) translateY(20px);z-index:0;pointer-events:none;opacity:.6;}
+.swipe-card.top{z-index:10;}
+
+/* ── IMAGE ZONE — always shown, pinch-zoomable ── */
+.sc-img-zone{width:100%;height:220px;background:#05060f;overflow:hidden;flex-shrink:0;position:relative;}
+.sc-img-zone img{width:100%;height:100%;object-fit:contain;display:block;transform-origin:center center;will-change:transform;touch-action:none;user-select:none;-webkit-user-drag:none;}
+.zoom-hint{position:absolute;bottom:5px;right:8px;font-size:.58rem;color:rgba(255,255,255,.35);background:rgba(0,0,0,.55);padding:2px 8px;border-radius:10px;pointer-events:none;transition:opacity .3s;}
+.zoom-indicator{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:rgba(108,99,255,.8);color:#fff;font-size:.6rem;font-weight:700;padding:3px 10px;border-radius:20px;pointer-events:none;opacity:0;transition:opacity .2s;letter-spacing:.5px;}
+.zoom-indicator.show{opacity:1;}
+.no-img-placeholder{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--faint);}
+.no-img-placeholder .no-img-icon{font-size:1.8rem;opacity:.4;}
+.no-img-placeholder .no-img-txt{font-size:.68rem;opacity:.5;}
+
+/* Card body */
+.sc-body{padding:14px 16px 8px;flex:1;overflow:hidden;display:flex;flex-direction:column;justify-content:center;}
+.sc-badge{display:inline-block;font-size:.58rem;text-transform:uppercase;letter-spacing:1.5px;padding:4px 10px;border-radius:20px;margin-bottom:8px;font-weight:700;}
+.bf{background:rgba(108,99,255,.2);color:#a78bfa;border:1px solid rgba(108,99,255,.3);}
+.bc{background:rgba(67,233,123,.15);color:#6ee7b7;border:1px solid rgba(67,233,123,.2);}
+.bi{background:rgba(255,101,132,.15);color:#fda4af;border:1px solid rgba(255,101,132,.2);}
+.sc-question{font-size:.93rem;line-height:1.65;color:var(--muted);}
+
+/* Card footer */
+.sc-footer{padding:10px 14px 14px;flex-shrink:0;background:rgba(0,0,0,.2);border-top:1px solid rgba(255,255,255,.04);}
+.see-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:linear-gradient(135deg,rgba(108,99,255,.15),rgba(108,99,255,.08));border:1px solid rgba(108,99,255,.3);color:#a78bfa;padding:12px;border-radius:13px;font-size:.88rem;font-family:var(--font-body);font-weight:600;cursor:pointer;transition:all .2s;}
+.see-btn:active{background:rgba(108,99,255,.25);}
+.answer-box{padding:12px 14px;background:linear-gradient(135deg,rgba(108,99,255,.12),rgba(108,99,255,.06));border:1px solid rgba(108,99,255,.25);border-radius:12px;margin-bottom:8px;animation:popIn .2s ease;}
+@keyframes popIn{from{opacity:0;transform:scale(.93)}to{opacity:1;transform:scale(1)}}
+.ans-lbl{font-size:.58rem;text-transform:uppercase;letter-spacing:1.5px;color:#a78bfa;font-weight:700;}
+.ans-val{font-size:1.05rem;font-weight:700;color:var(--text);margin-top:4px;}
+.verdict-row{display:flex;gap:8px;}
+.verdict-btn{flex:1;padding:12px 8px;border:none;border-radius:12px;font-family:var(--font-body);font-size:.88rem;font-weight:700;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;}
+.btn-correct{background:linear-gradient(135deg,rgba(67,233,123,.2),rgba(67,233,123,.1));color:var(--green);border:1px solid rgba(67,233,123,.3);}
+.btn-wrong{background:linear-gradient(135deg,rgba(255,101,132,.2),rgba(255,101,132,.1));color:var(--red);border:1px solid rgba(255,101,132,.3);}
+.card-actions-row{display:flex;gap:8px;margin-top:8px;}
+.icon-btn{background:transparent;border:1px solid var(--border2);color:var(--dim);padding:10px 13px;border-radius:11px;font-size:.88rem;cursor:pointer;transition:all .2s;flex-shrink:0;}
+.icon-btn.star-active{background:rgba(255,215,0,.15);border-color:rgba(255,215,0,.4);color:var(--gold);}
+.icon-btn:active{background:rgba(255,255,255,.08);}
+
+/* Swipe labels */
+.swipe-nope{position:absolute;top:18px;left:18px;background:rgba(255,101,132,.2);border:2px solid var(--red);border-radius:10px;padding:5px 12px;font-size:.82rem;font-weight:800;color:var(--red);opacity:0;z-index:20;transform:rotate(-15deg);letter-spacing:1px;}
+.swipe-good{position:absolute;top:18px;right:18px;background:rgba(67,233,123,.2);border:2px solid var(--green);border-radius:10px;padding:5px 12px;font-size:.82rem;font-weight:800;color:var(--green);opacity:0;z-index:20;transform:rotate(15deg);letter-spacing:1px;}
+.swipe-hint{display:flex;align-items:center;justify-content:space-between;padding:0 4px;margin-bottom:8px;}
+.hint-txt{font-size:.65rem;color:var(--faint);}
+.card-counter{font-size:.8rem;color:var(--dim);font-weight:600;background:rgba(255,255,255,.05);padding:4px 12px;border-radius:20px;border:1px solid var(--border);}
+
+/* DONE SCREEN */
+.deck-done{background:linear-gradient(145deg,#0e0f20,#090a16);border:1px solid rgba(108,99,255,.2);border-radius:24px;padding:32px 20px;text-align:center;}
+.deck-done .big-emoji{font-size:3.5rem;margin-bottom:14px;}
+.deck-done h3{font-family:var(--font-head);font-size:1.4rem;margin-bottom:18px;background:linear-gradient(135deg,#fff,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.result-row{display:flex;gap:10px;margin-bottom:20px;}
+.result-box{flex:1;border-radius:16px;padding:18px 10px;text-align:center;}
+.result-box.g{background:rgba(67,233,123,.1);border:1px solid rgba(67,233,123,.2);}
+.result-box.r{background:rgba(255,101,132,.1);border:1px solid rgba(255,101,132,.2);}
+.result-n{font-family:var(--font-head);font-size:2.2rem;font-weight:800;}
+.result-n.g{color:var(--green);}
+.result-n.r{color:var(--red);}
+.result-l{font-size:.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin-top:4px;}
+.restart-btn{display:block;width:100%;padding:14px;background:linear-gradient(135deg,#6c63ff,#8b5cf6);color:#fff;border:none;border-radius:13px;font-family:var(--font-body);font-size:.95rem;font-weight:700;cursor:pointer;margin-bottom:10px;box-shadow:0 4px 15px rgba(108,99,255,.3);}
+.review-btn{display:block;width:100%;padding:14px;background:rgba(255,101,132,.1);color:var(--red);border:1px solid rgba(255,101,132,.2);border-radius:13px;font-family:var(--font-body);font-size:.95rem;font-weight:600;cursor:pointer;}
+.wrong-card{background:rgba(255,101,132,.07);border:1px solid rgba(255,101,132,.2);border-radius:14px;padding:14px;margin-bottom:10px;}
+.wrong-q{font-size:.88rem;color:var(--muted);margin-bottom:8px;line-height:1.5;}
+.wrong-a{display:inline-block;background:rgba(255,101,132,.1);border:1px solid rgba(255,101,132,.2);border-radius:8px;padding:5px 12px;font-size:.82rem;color:var(--red);font-weight:600;}
+
+/* FOLDERS */
+.folder-card{background:linear-gradient(135deg,rgba(255,255,255,.04),rgba(255,255,255,.02));border:1px solid var(--border);border-radius:20px;margin-bottom:12px;overflow:hidden;}
+.folder-header{display:flex;align-items:center;gap:12px;padding:16px;cursor:pointer;}
+.folder-icon{font-size:1.5rem;flex-shrink:0;}
+.folder-info{flex:1;min-width:0;}
+.folder-name{font-family:var(--font-head);font-size:1rem;font-weight:700;}
+.folder-meta{font-size:.68rem;color:var(--dim);margin-top:2px;}
+.folder-chevron{color:var(--dim);font-size:1rem;transition:transform .25s;flex-shrink:0;}
+.folder-chevron.open{transform:rotate(90deg);}
+.folder-subjects{display:none;border-top:1px solid var(--border);padding:10px 14px 14px;}
+.folder-subjects.open{display:block;}
+.folder-subject-item{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:14px;padding:13px 14px;margin-top:8px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:transform .15s;}
+.folder-subject-item:active{transform:scale(.98);}
+.fsi-icon{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;}
+.fsi-info{flex:1;min-width:0;}
+.fsi-name{font-size:.88rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fsi-meta{font-size:.68rem;color:var(--dim);margin-top:2px;}
+.add-subject-to-folder{display:flex;align-items:center;gap:8px;background:rgba(108,99,255,.05);border:1px dashed rgba(108,99,255,.2);border-radius:12px;padding:10px 14px;color:rgba(167,139,250,.6);font-family:var(--font-body);font-size:.78rem;cursor:pointer;width:100%;margin-top:8px;transition:all .2s;}
+.new-folder-btn{display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,rgba(108,99,255,.1),rgba(108,99,255,.05));border:1px dashed rgba(108,99,255,.3);border-radius:16px;padding:14px 18px;color:#a78bfa;font-family:var(--font-body);font-size:.88rem;font-weight:600;cursor:pointer;width:100%;margin-bottom:14px;transition:all .2s;}
+
+/* SMART REVIEW BANNER */
+.smart-review-banner{background:linear-gradient(135deg,rgba(255,101,132,.12),rgba(108,99,255,.1));border:1px solid rgba(255,101,132,.3);border-radius:18px;padding:16px;margin-bottom:14px;}
+.srb-top{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.srb-icon{font-size:1.6rem;}
+.srb-title{font-family:var(--font-head);font-size:.95rem;color:#fda4af;font-weight:700;}
+.srb-sub{font-size:.75rem;color:var(--muted);line-height:1.5;}
+.srb-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.srb-chip{background:rgba(255,101,132,.12);border:1px solid rgba(255,101,132,.2);border-radius:20px;padding:3px 10px;font-size:.68rem;color:#fda4af;}
+.srb-start{display:flex;align-items:center;justify-content:space-between;margin-top:12px;}
+.srb-btn{background:linear-gradient(135deg,#ff6584,#e05c7a);color:#fff;border:none;border-radius:10px;padding:9px 18px;font-family:var(--font-body);font-size:.82rem;font-weight:700;cursor:pointer;}
+.srb-dismiss{background:none;border:none;color:var(--dim);font-size:.78rem;cursor:pointer;font-family:var(--font-body);}
+
+/* MANUAL CARD CREATOR */
+.manual-subject-select{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:14px;padding:14px 16px;color:var(--text);font-family:var(--font-body);font-size:.95rem;outline:none;appearance:none;cursor:pointer;margin-bottom:16px;transition:all .2s;}
+.manual-subject-select option{background:#0b0d1a;color:var(--text);}
+.card-preview{background:linear-gradient(145deg,#0e0f20,#090a16);border:1px solid rgba(108,99,255,.2);border-radius:16px;padding:18px;margin-bottom:0;}
+.card-preview-q{font-size:.9rem;color:var(--muted);line-height:1.5;margin-bottom:10px;min-height:40px;}
+.card-preview-a{display:inline-block;background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.25);border-radius:8px;padding:6px 12px;font-size:.85rem;color:#a78bfa;font-weight:600;}
+.type-row{display:flex;gap:8px;margin-bottom:16px;}
+.type-chip{flex:1;padding:9px 6px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:11px;color:var(--dim);font-family:var(--font-body);font-size:.74rem;font-weight:600;cursor:pointer;text-align:center;transition:all .2s;}
+.type-chip.active{background:linear-gradient(135deg,rgba(108,99,255,.2),rgba(108,99,255,.1));border-color:rgba(108,99,255,.4);color:#a78bfa;}
+.cards-count-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.saved-cards-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;max-height:280px;overflow-y:auto;}
+.saved-card-item{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:12px 14px;display:flex;align-items:flex-start;gap:10px;}
+.saved-card-info{flex:1;min-width:0;}
+.saved-card-q{font-size:.82rem;color:var(--muted);margin-bottom:4px;line-height:1.4;}
+.saved-card-a{font-size:.78rem;color:#a78bfa;font-weight:600;}
+.saved-card-del{background:none;border:none;color:var(--faint);font-size:.9rem;cursor:pointer;padding:2px;flex-shrink:0;}
+.textarea-inp{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:14px;padding:13px 16px;color:var(--text);font-family:var(--font-body);font-size:.92rem;outline:none;resize:none;line-height:1.6;transition:all .2s;}
+.textarea-inp:focus{border-color:rgba(108,99,255,.5);background:rgba(108,99,255,.04);}
+.textarea-inp::placeholder{color:var(--faint);}
+.char-count{font-size:.65rem;color:var(--dim);text-align:right;margin-top:4px;}
+
+/* EDIT MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px);}
+.modal-overlay.open{display:flex;}
+.edit-modal{background:linear-gradient(145deg,#0e0f20,#090a16);border:1px solid rgba(108,99,255,.25);border-radius:24px 24px 0 0;padding:24px 20px 44px;width:100%;max-height:88vh;overflow-y:auto;animation:slideUp .28s cubic-bezier(.34,1.56,.64,1);}
+.modal-handle{width:40px;height:4px;background:rgba(255,255,255,.1);border-radius:4px;margin:0 auto 20px;}
+.modal-title{font-family:var(--font-head);font-size:1.15rem;font-weight:800;margin-bottom:20px;background:linear-gradient(135deg,#fff,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.modal-actions{display:flex;gap:10px;margin-top:18px;}
+.modal-save{flex:1;padding:13px;background:linear-gradient(135deg,#6c63ff,#8b5cf6);color:#fff;border:none;border-radius:12px;font-family:var(--font-body);font-size:.9rem;font-weight:700;cursor:pointer;}
+.modal-cancel{padding:13px 18px;background:rgba(255,255,255,.04);color:var(--dim);border:1px solid var(--border);border-radius:12px;font-family:var(--font-body);font-size:.9rem;cursor:pointer;}
+.modal-delete{padding:13px 16px;background:rgba(255,101,132,.1);color:var(--red);border:1px solid rgba(255,101,132,.2);border-radius:12px;font-family:var(--font-body);font-size:.9rem;cursor:pointer;}
+
+/* LONG PRESS MENU */
+.lp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:900;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px);}
+.lp-overlay.open{display:flex;}
+.lp-menu{background:linear-gradient(145deg,#12122a,#0a0a18);border:1px solid rgba(255,101,132,.25);border-radius:22px 22px 0 0;padding:20px 20px 44px;width:100%;animation:slideUp .25s ease;}
+.lp-subject-info{display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,.06);}
+.lp-subject-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;}
+.lp-subject-name{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;}
+.lp-subject-meta{font-size:.72rem;color:var(--dim);margin-top:2px;}
+.lp-btn{display:flex;align-items:center;gap:14px;width:100%;padding:16px 18px;background:transparent;border:none;border-radius:14px;font-family:'Plus Jakarta Sans',sans-serif;font-size:1rem;font-weight:600;cursor:pointer;transition:all .2s;margin-bottom:8px;text-align:left;}
+.lp-btn-delete{background:rgba(255,101,132,.1);border:1px solid rgba(255,101,132,.2);color:#fda4af;}
+.lp-btn-cancel{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:var(--dim);}
+.lp-btn-icon{font-size:1.4rem;width:36px;text-align:center;}
+.lp-btn-text{flex:1;}
+.lp-btn-label{font-size:.95rem;font-weight:700;}
+.lp-btn-sub{font-size:.72rem;opacity:.7;margin-top:2px;}
+
+/* API / STATS */
+.api-info{background:rgba(108,99,255,.08);border:1px solid rgba(108,99,255,.2);border-radius:14px;padding:16px;font-size:.82rem;line-height:1.9;color:var(--muted);margin-bottom:20px;}
+.api-link{color:#a78bfa;}
+.api-saved{display:none;margin-top:10px;color:var(--green);font-size:.85rem;text-align:center;}
+.free-badge{background:rgba(67,233,123,.15);border:1px solid rgba(67,233,123,.25);border-radius:20px;padding:2px 10px;font-size:.68rem;color:var(--green);font-weight:700;vertical-align:middle;}
+
+/* Daily Stats Card */
+.stats-day-card{background:linear-gradient(135deg,rgba(255,255,255,.04),rgba(255,255,255,.02));border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px;}
+.stats-day-date{font-size:.68rem;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;}
+.stats-day-row{display:flex;gap:10px;}
+.stats-day-item{flex:1;text-align:center;}
+.stats-day-n{font-family:var(--font-head);font-size:1.4rem;font-weight:800;background:linear-gradient(135deg,#fff,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.stats-day-l{font-size:.6rem;color:var(--dim);margin-top:2px;text-transform:uppercase;letter-spacing:.5px;}
+.stats-day-accuracy{font-size:.8rem;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.stats-acc-bar{height:6px;background:rgba(255,255,255,.06);border-radius:10px;flex:1;margin:0 10px;overflow:hidden;}
+.stats-acc-fill{height:100%;background:linear-gradient(90deg,#6c63ff,#43e97b);border-radius:10px;}
+
+/* REMINDER SECTION */
+.reminder-section{background:linear-gradient(135deg,rgba(255,215,0,.08),rgba(255,215,0,.03));border:1px solid rgba(255,215,0,.2);border-radius:16px;padding:16px;margin-top:20px;}
+.reminder-title{font-family:var(--font-head);font-size:.95rem;color:var(--gold);margin-bottom:12px;}
+
+/* Starred Banner */
+.starred-banner{background:linear-gradient(135deg,rgba(255,215,0,.12),rgba(255,165,0,.06));border:1px solid rgba(255,215,0,.3);border-radius:18px;padding:14px 16px;margin-bottom:12px;cursor:pointer;display:flex;align-items:center;gap:12px;}
+.starred-banner:active{transform:scale(.99);}
+
+@keyframes slideUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
+.add-more-btn{display:block;width:100%;padding:14px;background:transparent;color:var(--dim);border:1px dashed rgba(255,255,255,.1);border-radius:14px;font-size:.9rem;font-family:var(--font-body);cursor:pointer;margin-top:14px;transition:all .2s;}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="bg-mesh"></div>
+
+<div class="header">
+  <div>
+    <div class="logo">Flash<span>Snap</span></div>
+    <div class="logo-sub">Screenshot → Instant Flashcards</div>
+  </div>
+  <div class="gemini-badge">✦ Gemini 2.5 Flash</div>
+</div>
+
+<!-- HOME -->
+<div class="screen active" id="screen-home">
+  <div class="smart-review-banner" id="smart-review-banner" style="display:none">
+    <div class="srb-top"><div class="srb-icon">🧠</div><div class="srb-title">Weekly Galat Cards Ready!</div></div>
+    <div class="srb-sub" id="srb-sub">Zyada galat = zyada baar aayega</div>
+    <div class="srb-chips" id="srb-chips"></div>
+    <div class="srb-start">
+      <button class="srb-btn" onclick="startSmartReview()">🚀 Start Smart Review</button>
+      <button class="srb-dismiss" onclick="document.getElementById('smart-review-banner').style.display='none'">✕ Baad mein</button>
+    </div>
+  </div>
+  <div id="empty-home" class="empty-home">
+    <div class="empty-icon">🎴</div>
+    <h3>Koi subject nahi abhi</h3>
+    <p>Neeche <strong>✨ Generate</strong> dabao<br/>screenshot se flashcards banao!</p>
+  </div>
+  <div id="subjects-wrap" style="display:none">
+    <div style="display:flex;gap:10px;margin-bottom:4px;">
+      <button class="new-folder-btn" style="flex:1;margin-bottom:0" onclick="createFolder()">
+        <span style="font-size:1.2rem">📁</span> Naya Folder
+      </button>
+      <button onclick="openStarredDeck()" style="display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,rgba(255,215,0,.15),rgba(255,165,0,.08));border:1px solid rgba(255,215,0,.3);border-radius:16px;padding:14px 16px;color:var(--gold);font-family:'Plus Jakarta Sans',sans-serif;font-size:.85rem;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap;">
+        ⭐ Starred
+      </button>
+    </div>
+    <div class="section-lbl" style="margin-top:4px">Folders & Subjects</div>
+    <div id="subjects-list"></div>
+  </div>
+</div>
+
+<!-- ADD -->
+<div class="screen" id="screen-add">
+  <div class="screen-title">Naya Subject</div>
+  <div class="screen-sub">Subject naam + screenshot → Gemini baaki karega ✨</div>
+  <div class="input-group">
+    <label class="input-lbl">Subject ka naam</label>
+    <input class="inp" id="subject-name" placeholder="Surgery, Pharmacology, Anatomy..." type="text"/>
+  </div>
+  <div class="input-group">
+    <label class="input-lbl">Screenshot upload karo</label>
+    <div class="upload-box" id="upload-box" onclick="document.getElementById('file-input').click()">
+      <div class="u-icon">📸</div>
+      <h3 id="upload-title">Tap karke upload karo</h3>
+      <p id="upload-sub">ya drag &amp; drop karo</p>
+      <img id="preview-img" class="prev-img" style="display:none"/>
+    </div>
+    <input type="file" id="file-input" accept="image/*" style="display:none"/>
+  </div>
+  <div id="error-box" class="error-box" style="display:none"></div>
+  <button class="btn-primary" id="generate-btn" onclick="generateFlashcards()" disabled>✨ Flashcards Generate Karo</button>
+</div>
+
+<!-- LOADING -->
+<div class="screen" id="screen-loading">
+  <div class="loading-wrap">
+    <div class="spinner"></div>
+    <h3>Gemini analyze kar raha hai...</h3>
+    <p id="loading-msg">Saare facts + image regions extract ho rahe hain 🧠</p>
+    <div class="loading-dots" style="margin-top:16px"><span></span><span></span><span></span></div>
+  </div>
+</div>
+
+<!-- DETAIL -->
+<div class="screen" id="screen-detail">
+  <button class="back-btn" onclick="goBack()">← Wapas Jao</button>
+  <div id="detail-content"></div>
+</div>
+
+<!-- API KEY + STATS -->
+<div class="screen" id="screen-api">
+  <div class="screen-title" style="margin-bottom:6px">🔑 API Key & Stats</div>
+  <div class="screen-sub">Gemini key + daily progress dekho</div>
+
+  <div class="api-info">
+    <strong>API Key kahan se milegi?</strong><br/>
+    1. <a class="api-link" href="https://aistudio.google.com" target="_blank">aistudio.google.com</a> kholo<br/>
+    2. Google se login karo<br/>
+    3. <strong>"Get API Key"</strong> → <strong>"Create API Key"</strong><br/>
+    4. Copy karke neeche paste karo 👇
+  </div>
+  <div class="input-group">
+    <label class="input-lbl">Gemini API Key</label>
+    <input class="inp" id="api-key-input" placeholder="AIzaSy..." type="password"/>
+  </div>
+  <button class="btn-primary" onclick="saveApiKey()">💾 Key Save Karo</button>
+  <div class="api-saved" id="api-saved">✅ Saved!</div>
+
+  <!-- DAILY STATS SECTION -->
+  <div style="margin-top:28px;">
+    <div class="section-lbl">📊 Daily Progress</div>
+    <div id="daily-stats-wrap">
+      <div style="text-align:center;padding:30px;color:var(--dim);font-size:.82rem;">Abhi tak koi deck practice nahi ki...</div>
+    </div>
+  </div>
+
+  <!-- BACKUP SECTION -->
+  <div style="margin-top:24px;background:#0d1a0d;border:1px solid #1a3a1a;border-radius:14px;padding:16px;">
+    <div style="font-size:13px;font-weight:700;color:#4ade80;margin-bottom:4px;">💾 Data Backup & Restore</div>
+    <div style="font-size:11px;color:#5a8a5a;margin-bottom:14px;line-height:1.6;">⚠️ Saara data sirf is browser mein hai. Weekly backup lo!</div>
+    <button class="btn-primary" onclick="exportFlashSnapData()" style="background:linear-gradient(135deg,#059669,#0d9488);margin-bottom:10px;width:100%;">📥 Export Backup (.json)</button>
+    <button class="btn-primary" onclick="document.getElementById('import-file-input').click()" style="background:linear-gradient(135deg,#2563eb,#0891b2);width:100%;">📤 Import Backup</button>
+    <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="importFlashSnapData(event)"/>
+    <div id="backup-msg" style="margin-top:10px;font-size:12px;color:#4ade80;display:none;"></div>
+  </div>
+</div>
+
+<!-- EDIT CARD MODAL -->
+<div class="modal-overlay" id="edit-modal-overlay" onclick="closeEditModal(event)">
+  <div class="edit-modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">✏️ Card Edit Karo</div>
+    <div class="input-group">
+      <label class="input-lbl">Question</label>
+      <textarea class="textarea-inp" id="edit-q" rows="3"></textarea>
+    </div>
+    <div class="input-group">
+      <label class="input-lbl">Answer (max 4-5 words)</label>
+      <input class="inp" id="edit-a" maxlength="80"/>
+    </div>
+    <div class="input-group">
+      <label class="input-lbl">Type</label>
+      <div class="type-row">
+        <div class="type-chip" id="etype-fact" onclick="setEditType('fact')">📋 Fact</div>
+        <div class="type-chip" id="etype-concept" onclick="setEditType('concept')">💡 Concept</div>
+        <div class="type-chip" id="etype-image" onclick="setEditType('image')">🖼️ Image</div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeEditModal()">Cancel</button>
+      <button class="modal-delete" onclick="deleteCardFromEdit()">🗑 Delete</button>
+      <button class="modal-save" onclick="saveEditedCard()">💾 Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- LONG PRESS DELETE OVERLAY -->
+<div class="lp-overlay" id="lp-overlay" onclick="closeLpMenu()">
+  <div class="lp-menu" onclick="event.stopPropagation()">
+    <div class="lp-subject-info">
+      <div class="lp-subject-icon" id="lp-icon"></div>
+      <div>
+        <div class="lp-subject-name" id="lp-name"></div>
+        <div class="lp-subject-meta" id="lp-meta"></div>
+      </div>
+    </div>
+    <button class="lp-btn lp-btn-delete" onclick="confirmDeleteSubject()">
+      <span class="lp-btn-icon">🗑️</span>
+      <div class="lp-btn-text">
+        <div class="lp-btn-label">Subject Delete Karo</div>
+        <div class="lp-btn-sub">Saari flashcards bhi delete ho jayengi</div>
+      </div>
+    </button>
+    <button class="lp-btn lp-btn-cancel" onclick="closeLpMenu()">
+      <span class="lp-btn-icon">✕</span>
+      <div class="lp-btn-text"><div class="lp-btn-label">Cancel</div></div>
+    </button>
+  </div>
+</div>
+
+<!-- MANUAL CARD CREATOR -->
+<div class="screen" id="screen-manual">
+  <div class="screen-title">✍️ Manual Flashcard</div>
+  <div class="screen-sub">Khud se flashcard banao kisi bhi subject mein</div>
+  <div class="input-group">
+    <label class="input-lbl">Subject choose karo</label>
+    <select class="manual-subject-select" id="manual-subject-select">
+      <option value="">-- Subject select karo --</option>
+    </select>
+  </div>
+  <div class="input-group">
+    <label class="input-lbl">Card Type</label>
+    <div class="type-row">
+      <div class="type-chip active" id="mtype-fact" onclick="setManualType('fact')">📋 Fact</div>
+      <div class="type-chip" id="mtype-concept" onclick="setManualType('concept')">💡 Concept</div>
+      <div class="type-chip" id="mtype-image" onclick="setManualType('image')">🖼️ Image</div>
+    </div>
+  </div>
+  <div class="input-group">
+    <label class="input-lbl">Question</label>
+    <textarea class="textarea-inp" id="manual-q" rows="3" placeholder="jaise: Nerve supply of deltoid?" oninput="updateManualPreview();updateCharCount('manual-q','qcount',150)"></textarea>
+    <div class="char-count" id="qcount">0/150</div>
+  </div>
+  <div class="input-group">
+    <label class="input-lbl">Answer (max 4 words)</label>
+    <input class="inp" id="manual-a" placeholder="jaise: Axillary nerve" maxlength="60" oninput="updateManualPreview()"/>
+  </div>
+  <div class="input-group">
+    <label class="input-lbl">Preview</label>
+    <div class="card-preview">
+      <div class="card-preview-q" id="preview-q">Question yahan dikhega...</div>
+      <div class="card-preview-a" id="preview-a">Answer</div>
+    </div>
+  </div>
+  <div id="manual-error" class="error-box" style="display:none"></div>
+  <button class="btn-primary" onclick="saveManualCard()">💾 Card Save Karo</button>
+  <div id="manual-saved-wrap" style="display:none;margin-top:24px;">
+    <div class="cards-count-bar">
+      <div class="section-lbl" style="margin:0" id="manual-saved-label">Saved Cards</div>
+      <button onclick="clearManualForm()" style="background:none;border:none;color:var(--dim);font-size:.75rem;cursor:pointer;font-family:var(--font-body);">+ Naya Card</button>
+    </div>
+    <div class="saved-cards-list" id="manual-saved-list"></div>
+    <button class="btn-primary" onclick="finalizeManualCards()" style="background:var(--green);color:#000;">✅ Subject mein Add Karo</button>
+  </div>
+</div>
+
+<div class="bottom-nav">
+  <button class="nav-btn active" id="nav-home" onclick="showScreen('home')"><div class="nav-icon-wrap"><span class="nav-icon">🗂️</span></div>Subjects</button>
+  <button class="nav-btn" id="nav-add" onclick="showScreen('add')"><div class="nav-icon-wrap"><span class="nav-icon">✨</span></div>Generate</button>
+  <button class="nav-btn" id="nav-manual" onclick="showScreen('manual')"><div class="nav-icon-wrap"><span class="nav-icon">✍️</span></div>Manual</button>
+  <button class="nav-btn" id="nav-api" onclick="showScreen('api');renderDailyStats();"><div class="nav-icon-wrap"><span class="nav-icon">📊</span></div>Stats</button>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// STORAGE KEYS (legacy localStorage keys for migration)
+// ═══════════════════════════════════════════════════
+const STORAGE_KEY   = 'flashsnap_v10';
+const API_KEY_STORE = 'flashsnap_gemini_apikey';
+const SCORES_KEY    = 'flashsnap_scores_v10';
+const FOLDER_KEY    = 'flashsnap_folders_v2';
+const STARRED_KEY   = 'flashsnap_starred_v1';
+const DAILY_KEY     = 'flashsnap_daily_v1';
+
+const EMOJIS  = ['🧠','💊','🔬','🫀','🦷','🧬','📋','🩺','⚕️','🏥','🦴','👁️','🫁','🩻'];
+const COLORS  = ['c0','c1','c2','c3','c4','c5'];
+
+// ═══════════════════════════════════════════════════
+// INDEXEDDB — replaces localStorage for all card data
+// Supports 60,000+ cards (hundreds of MB)
+// ═══════════════════════════════════════════════════
+const DB_NAME    = 'FlashSnapDB';
+const DB_VERSION = 1;
+let _db = null;
+
+function openDB(){
+  return new Promise((resolve, reject) => {
+    if(_db){ resolve(_db); return; }
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      // One store per data type, keyed by 'id'
+      if(!db.objectStoreNames.contains('kv')){
+        db.createObjectStore('kv', { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = e => { _db = e.target.result; resolve(_db); };
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+async function idbGet(key){
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction('kv', 'readonly');
+    const req = tx.objectStore('kv').get(key);
+    req.onsuccess = () => resolve(req.result ? req.result.val : null);
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+async function idbSet(key, val){
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction('kv', 'readwrite');
+    tx.objectStore('kv').put({ id: key, val });
+    tx.oncomplete = () => resolve();
+    tx.onerror    = e => reject(e.target.error);
+  });
+}
+
+// ── IN-MEMORY CACHE (sync-like access after init) ────
+let _cache = {
+  subjects: {},
+  scores:   {},
+  folders:  {},
+  starred:  [],
+  daily:    {}
+};
+let _dbReady = false;
+
+async function initDB(){
+  // Load all data from IDB into cache
+  const [subjects, scores, folders, starred, daily] = await Promise.all([
+    idbGet('subjects'), idbGet('scores'), idbGet('folders'),
+    idbGet('starred'),  idbGet('daily')
+  ]);
+
+  // Migrate from localStorage if IDB is empty
+  if(!subjects){
+    const ls = localStorage.getItem(STORAGE_KEY);
+    _cache.subjects = ls ? JSON.parse(ls) : {};
+    if(ls){
+      await idbSet('subjects', _cache.subjects);
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  } else { _cache.subjects = subjects; }
+
+  if(!scores){
+    const ls = localStorage.getItem(SCORES_KEY);
+    _cache.scores = ls ? JSON.parse(ls) : {};
+    if(ls){ await idbSet('scores', _cache.scores); localStorage.removeItem(SCORES_KEY); }
+  } else { _cache.scores = scores; }
+
+  if(!folders){
+    const ls = localStorage.getItem(FOLDER_KEY);
+    _cache.folders = ls ? JSON.parse(ls) : {};
+    if(ls){ await idbSet('folders', _cache.folders); localStorage.removeItem(FOLDER_KEY); }
+  } else { _cache.folders = folders; }
+
+  if(!starred){
+    const ls = localStorage.getItem(STARRED_KEY);
+    _cache.starred = ls ? JSON.parse(ls) : [];
+    if(ls){ await idbSet('starred', _cache.starred); localStorage.removeItem(STARRED_KEY); }
+  } else { _cache.starred = starred; }
+
+  if(!daily){
+    const ls = localStorage.getItem(DAILY_KEY);
+    _cache.daily = ls ? JSON.parse(ls) : {};
+    if(ls){ await idbSet('daily', _cache.daily); localStorage.removeItem(DAILY_KEY); }
+  } else { _cache.daily = daily; }
+
+  _dbReady = true;
+}
+
+// ── SYNC-STYLE GETTERS/SETTERS (cache layer) ─────────
+function getSubjects(){ return _cache.subjects; }
+function saveSubjectsData(d){ _cache.subjects = d; idbSet('subjects', d).catch(console.error); }
+function getAllScores(){ return _cache.scores; }
+function saveAllScores(d){ _cache.scores = d; idbSet('scores', d).catch(console.error); }
+function getFolders(){ return _cache.folders; }
+function saveFolders(d){ _cache.folders = d; idbSet('folders', d).catch(console.error); }
+function getStarred(){ return _cache.starred; }
+function saveStarred(d){ _cache.starred = d; idbSet('starred', d).catch(console.error); }
+function getDailyStats(){ return _cache.daily; }
+function saveDailyStats(d){ _cache.daily = d; idbSet('daily', d).catch(console.error); }
+function getApiKey(){ return localStorage.getItem(API_KEY_STORE)||''; }
+
+// ── COMPRESS IMAGE ────────────────────────────────────
+function compressImage(base64, mimeType, cb){
+  const img = new Image();
+  img.onload = function(){
+    const MAX = 900;
+    let w = img.width, h = img.height;
+    if(w > MAX || h > MAX){
+      const ratio = Math.min(MAX/w, MAX/h);
+      w = Math.round(w*ratio); h = Math.round(h*ratio);
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, w, h);
+    const compressed = canvas.toDataURL('image/jpeg', 0.72);
+    cb(compressed.split(',')[1], 'image/jpeg');
+  };
+  img.src = 'data:' + mimeType + ';base64,' + base64;
+}
+
+function saveApiKey(){
+  const k = document.getElementById('api-key-input').value.trim();
+  if(!k){ alert('Key daalo!'); return; }
+  localStorage.setItem(API_KEY_STORE, k);
+  const el = document.getElementById('api-saved');
+  el.style.display = 'block';
+  setTimeout(()=> el.style.display = 'none', 2500);
+}
+
+function escapeHtml(t){ return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ═══════════════════════════════════════════════════
+// DECK STATE
+// ═══════════════════════════════════════════════════
+let imageBase64 = null, imageType = null, currentSubjectKey = null;
+let deckCards = [], deckIdx = 0, deckAnswerShown = false;
+let deckCorrect = [], deckWrong = [];
+let deckScreenshotData = null, deckType = 'all', deckSubjectKey = null;
+let _prevScreen = 'home'; // for back button
+let isZooming = false;    // global: block swipe while zoomed
+
+// ═══════════════════════════════════════════════════
+// SCREEN NAV
+// ═══════════════════════════════════════════════════
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const screenEl = document.getElementById('screen-' + name);
+  if(screenEl) screenEl.classList.add('active');
+  const navEl = document.getElementById('nav-' + name);
+  if(navEl) navEl.classList.add('active');
+  if(name === 'home') renderHome();
+  if(name === 'add') resetAdd();
+  if(name === 'api'){ const sv = getApiKey(); if(sv) document.getElementById('api-key-input').value = sv; renderDailyStats(); }
+  if(name === 'manual'){ populateManualSubjects(); manualTempCards = []; document.getElementById('manual-saved-wrap').style.display = 'none'; updateManualPreview(); }
+}
+
+function goBack(){
+  showScreen('home');
+}
+
+// ═══════════════════════════════════════════════════
+// HOME RENDER
+// ═══════════════════════════════════════════════════
+function renderHome(){
+  const subjects = getSubjects(), keys = Object.keys(subjects);
+  const scores   = getAllScores();
+  const folders  = getFolders();
+  const folderKeys = Object.keys(folders);
+  const starred  = getStarred();
+
+  document.getElementById('empty-home').style.display = (keys.length === 0 && folderKeys.length === 0) ? 'block' : 'none';
+  document.getElementById('subjects-wrap').style.display = (keys.length > 0 || folderKeys.length > 0) ? 'block' : 'none';
+  if(!keys.length && !folderKeys.length) return;
+
+  const folderedSubjects = new Set(folderKeys.flatMap(k => folders[k].subjectKeys || []));
+  const unfiledKeys = keys.filter(k => !folderedSubjects.has(k));
+
+  let html = '';
+
+  // Starred banner
+  if(starred.length > 0){
+    html += `<div class="starred-banner" onclick="openStarredDeck()">
+      <span style="font-size:1.5rem">⭐</span>
+      <div style="flex:1">
+        <div style="font-family:var(--font-head);font-size:.9rem;color:var(--gold);font-weight:700;">Starred Cards</div>
+        <div style="font-size:.72rem;color:var(--dim);margin-top:2px;">${starred.length} cards starred across all subjects</div>
+      </div>
+      <span style="color:var(--dim)">›</span>
+    </div>`;
+  }
+
+  // Folders
+  folderKeys.forEach(fk => {
+    const f = folders[fk];
+    const validSubjectKeys = (f.subjectKeys||[]).filter(k => subjects[k]);
+    const totalCards = validSubjectKeys.reduce((sum, k) => sum + (subjects[k]?.cards?.length || 0), 0);
+    html += `<div class="folder-card">
+      <div class="folder-header" onclick="toggleFolder('${fk}')">
+        <div class="folder-icon">${f.emoji}</div>
+        <div class="folder-info">
+          <div class="folder-name">${escapeHtml(f.name)}</div>
+          <div class="folder-meta">${validSubjectKeys.length} subjects · ${totalCards} cards</div>
+        </div>
+        <button onclick="event.stopPropagation();if(confirm('Folder delete ho jayega?')){const f=getFolders();delete f['${fk}'];saveFolders(f);renderHome();}" style="background:rgba(255,101,132,.12);border:1px solid rgba(255,101,132,.25);border-radius:10px;padding:7px 12px;color:#fda4af;font-size:.75rem;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;flex-shrink:0;">🗑</button>
+        <div class="folder-chevron ${f.open?'open':''}">›</div>
+      </div>
+      <div class="folder-subjects ${f.open?'open':''}">
+        ${validSubjectKeys.map(sk => {
+          const s = subjects[sk];
+          const sc = scores[sk]||{correct:0,wrong:0};
+          const pct = sc.correct+sc.wrong > 0 ? Math.round(sc.correct/(sc.correct+sc.wrong)*100) : null;
+          return `<div class="folder-subject-item" onclick="openSubject('${sk}')" data-key="${sk}">
+            <div class="fsi-icon ${s.color}">${s.emoji}</div>
+            <div class="fsi-info">
+              <div class="fsi-name">${escapeHtml(s.name)}</div>
+              <div class="fsi-meta">${s.cards.length} cards${pct!==null?' · '+pct+'% accuracy':''}</div>
+            </div>
+            <button onclick="event.stopPropagation();removeFolderSubject('${fk}','${sk}')" style="background:none;border:none;color:var(--faint);padding:6px;cursor:pointer;">✕</button>
+            <span style="color:var(--dim)">›</span>
+          </div>`;
+        }).join('')}
+        <button class="add-subject-to-folder" onclick="addSubjectToFolder('${fk}')">➕ Subject add karo</button>
+      </div>
+    </div>`;
+  });
+
+  // Unfiled
+  if(unfiledKeys.length > 0){
+    if(folderKeys.length > 0) html += `<div class="section-lbl" style="margin-top:16px">📋 Unfiled Subjects</div>`;
+    html += unfiledKeys.map(k => {
+      const s = subjects[k];
+      const sc = scores[k]||{correct:0,wrong:0};
+      const pct = sc.correct+sc.wrong > 0 ? Math.round(sc.correct/(sc.correct+sc.wrong)*100) : 0;
+      let scoreHtml = sc.correct+sc.wrong > 0
+        ? `<div class="s-score"><span class="correct">✓ ${sc.correct}</span> · <span class="wrong">✗ ${sc.wrong}</span> · ${pct}%</div>` : '';
+      return `<div class="subject-card" onclick="openSubject('${k}')" data-key="${k}">
+        <div class="s-icon ${s.color}">${s.emoji}</div>
+        <div class="s-info">
+          <div class="s-name">${escapeHtml(s.name)}</div>
+          <div class="s-meta">${s.cards.length} cards · ${s.date}</div>
+          ${scoreHtml}
+        </div>
+        <span style="font-size:.65rem;color:var(--faint);">Hold to del</span>
+      </div>`;
+    }).join('');
+  }
+
+  document.getElementById('subjects-list').innerHTML = html;
+  checkSmartReview();
+}
+
+// ── FOLDERS ──────────────────────────────────────────
+function createFolder(){
+  const name = prompt('Folder ka naam daalo:\n(jaise: PYQ, Notes, High Yield)');
+  if(!name||!name.trim()) return;
+  const folders = getFolders();
+  const emojis = ['📁','📚','📝','⭐','🎯','🔥','💡','📌'];
+  const key = 'folder-' + Date.now();
+  folders[key] = { name: name.trim(), emoji: emojis[Object.keys(folders).length%emojis.length], subjectKeys:[], open:true };
+  saveFolders(folders);
+  renderHome();
+}
+
+function toggleFolder(key){
+  const folders = getFolders();
+  if(folders[key]) folders[key].open = !folders[key].open;
+  saveFolders(folders);
+  renderHome();
+}
+
+function removeFolderSubject(fk, sk){
+  const folders = getFolders();
+  if(folders[fk]) folders[fk].subjectKeys = folders[fk].subjectKeys.filter(k => k !== sk);
+  saveFolders(folders);
+  renderHome();
+}
+
+function addSubjectToFolder(folderKey){
+  const subjects = getSubjects();
+  const folders  = getFolders();
+  const alreadyIn = folders[folderKey]?.subjectKeys||[];
+  const available = Object.keys(subjects).filter(k => !alreadyIn.includes(k));
+  if(!available.length){ alert('Koi naya subject nahi available!'); return; }
+  const opts = available.map((k,i) => `${i+1}. ${subjects[k].emoji} ${subjects[k].name}`).join('\n');
+  const choice = prompt(`Kaunsa subject add karna hai?\n\n${opts}\n\nNumber daalo:`);
+  if(!choice) return;
+  const idx = parseInt(choice)-1;
+  if(isNaN(idx)||idx<0||idx>=available.length){ alert('Invalid!'); return; }
+  folders[folderKey].subjectKeys.push(available[idx]);
+  saveFolders(folders);
+  renderHome();
+}
+
+// ── OPEN SUBJECT ──────────────────────────────────────
+function openSubject(key){
+  currentSubjectKey = key; deckSubjectKey = key;
+  const s = getSubjects()[key]; if(!s) return;
+  _prevScreen = 'home';
+  document.querySelectorAll('.screen').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  renderDetail(key);
+  document.getElementById('screen-detail').classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════
+// DETAIL
+// ═══════════════════════════════════════════════════
+function renderDetail(key){
+  const s = getSubjects()[key]; if(!s) return;
+  const sc = getAllScores()[key]||{correct:0,wrong:0,wrongCards:[]};
+  const total = s.cards.length;
+  const pct = sc.correct+sc.wrong > 0 ? Math.round(sc.correct/(sc.correct+sc.wrong)*100) : 0;
+
+  let html = `
+    <div class="d-name">${s.emoji} ${escapeHtml(s.name)}</div>
+    <div class="d-meta">Created ${s.date}</div>
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-n def">${total}</div><div class="stat-l">Total</div></div>
+      <div class="stat-box"><div class="stat-n green">${sc.correct}</div><div class="stat-l">✓ Sahi</div></div>
+      <div class="stat-box"><div class="stat-n red">${sc.wrong}</div><div class="stat-l">✗ Galat</div></div>
+    </div>`;
+
+  if(sc.correct+sc.wrong > 0){
+    html += `<div class="score-bar-wrap">
+      <div class="score-bar-top"><span>Accuracy</span><span>${pct}%</span></div>
+      <div class="score-bar"><div class="score-bar-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }
+
+  html += `<div class="tab-row">
+    <button class="tab-btn active" id="tab-all"    onclick="switchTab('all','${key}')">📋 All (${total})</button>
+    <button class="tab-btn"         id="tab-images" onclick="switchTab('images','${key}')">🖼️ Img (${s.cards.filter(c=>c.type==='image').length})</button>
+    <button class="tab-btn"         id="tab-wrong"  onclick="switchTab('wrong','${key}')">✗ Wrong (${sc.wrongCards?sc.wrongCards.length:0})</button>
+  </div>
+  <div id="deck-container"></div>
+  <button class="add-more-btn" onclick="showScreen('add')">➕ Aur screenshots add karo</button>`;
+
+  document.getElementById('detail-content').innerHTML = html;
+  renderDeck(s.cards, s.screenshotData, 'all', key);
+}
+
+function switchTab(tab, key){
+  const s = getSubjects()[key]; if(!s) return;
+  const sc = getAllScores()[key]||{correct:0,wrong:0,wrongCards:[]};
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  const el = document.getElementById('tab-'+tab);
+  if(el) el.classList.add('active');
+  if(tab === 'all')    renderDeck(s.cards, s.screenshotData, 'all', key);
+  else if(tab === 'images') renderDeck(s.cards.filter(c=>c.type==='image'), s.screenshotData, 'images', key);
+  else if(tab === 'wrong')  showWrongCardsReview(sc.wrongCards||[], key);
+}
+
+function showWrongCardsReview(wrongCards, key){
+  const container = document.getElementById('deck-container');
+  if(!wrongCards.length){
+    container.innerHTML = `<div class="deck-done"><div class="big-emoji">🎉</div><h3>Koi galat card nahi!</h3><p style="color:var(--dim)">Great job! Sab sahi ho gaye.</p></div>`;
+    return;
+  }
+  let html = `<div style="margin-bottom:14px">
+    <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--dim);margin-bottom:10px">✗ Galat Cards (${wrongCards.length})</div>`;
+  wrongCards.forEach((card,i) => {
+    html += `<div class="wrong-card">
+      <div class="wrong-q">${i+1}. ${escapeHtml(card.question)}</div>
+      <div class="wrong-a">Answer: ${escapeHtml(card.answer)}</div>
+    </div>`;
+  });
+  html += `</div>
+  <div class="reminder-section">
+    <div class="reminder-title">🔔 Google Calendar Reminder</div>
+    <button onclick="addAllRemindersToCalendar('${key}')" style="display:block;width:100%;padding:14px;background:linear-gradient(135deg,#4285f4,#34a853);color:#fff;border:none;border-radius:13px;font-family:'Plus Jakarta Sans',sans-serif;font-size:.9rem;font-weight:700;cursor:pointer;margin-bottom:8px;">📆 Add Day 7+15+30 Reminders</button>
+  </div>`;
+  container.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════
+// DECK RENDER  — Feature 1: image always shown
+// ═══════════════════════════════════════════════════
+function renderDeck(cards, screenshotData, type, subjectKey){
+  deckCards = cards; deckIdx = 0; deckAnswerShown = false;
+  deckCorrect = []; deckWrong = [];
+  deckScreenshotData = screenshotData; deckType = type; deckSubjectKey = subjectKey;
+  buildDeckDOM();
+}
+
+function buildDeckDOM(){
+  const container = document.getElementById('deck-container');
+  if(!container) return;
+
+  if(!deckCards.length){
+    container.innerHTML = `<div class="deck-done"><div class="big-emoji">📭</div><h3>Koi card nahi</h3></div>`;
+    return;
+  }
+  if(deckIdx >= deckCards.length){ showDeckResults(); return; }
+
+  const starred = getStarred();
+
+  let html = `<div class="swipe-hint">
+    <span class="hint-txt">← Skip</span>
+    <span class="card-counter">${deckIdx+1} / ${deckCards.length}</span>
+    <span class="hint-txt">Skip →</span>
+  </div>
+  <div class="swipe-deck-wrap" id="swipe-wrap">`;
+
+  for(let i = Math.min(deckIdx+2, deckCards.length-1); i >= deckIdx; i--){
+    const card = deckCards[i];
+    const isTop = (i === deckIdx);
+    const stackClass = i===deckIdx?'top':i===deckIdx+1?'behind-1':'behind-2';
+    const badge = card.type==='concept'?'<span class="sc-badge bc">concept</span>':
+                  card.type==='image'  ?'<span class="sc-badge bi">image</span>':
+                                        '<span class="sc-badge bf">fact</span>';
+    const isStarred = starred.some(s => s.question === card.question);
+
+    // Feature 1: Always show image zone — show screenshot if available, else placeholder
+    let imgZone;
+    if(deckScreenshotData){
+      imgZone = `<div class="sc-img-zone" id="iz-${i}">
+        <img id="zimg-${i}" src="${deckScreenshotData}" draggable="false" alt=""/>
+        <div class="zoom-hint" id="zhint-${i}">🤏 Pinch to zoom</div>
+        <div class="zoom-indicator" id="zindicator-${i}">ZOOMED — Swipe disabled</div>
+      </div>`;
+    } else {
+      imgZone = `<div class="sc-img-zone" id="iz-${i}">
+        <div class="no-img-placeholder"><div class="no-img-icon">🖼️</div><div class="no-img-txt">No image for this subject</div></div>
+      </div>`;
+    }
+
+    html += `<div class="swipe-card ${stackClass}" id="sc-${i}">
+      <div class="swipe-nope" id="nope-${i}">SKIP</div>
+      <div class="swipe-good" id="good-${i}">NEXT</div>
+      ${imgZone}
+      <div class="sc-body">${badge}<div class="sc-question">${escapeHtml(card.question)}</div></div>
+      <div class="sc-footer" id="sf-${i}">
+        <div style="display:flex;gap:8px;">
+          <button class="see-btn" style="flex:1" onclick="revealAnswer(${i})">👁 See Answer</button>
+          <button class="icon-btn ${isStarred?'star-active':''}" id="starbtn-${i}" onclick="toggleStar(${i})" title="Star this card">⭐</button>
+          <button class="icon-btn" onclick="openEditModal(${i})" title="Edit card">✏️</button>
+        </div>
+      </div>
+    </div>`;
+  }
+  html += `</div>`;
+  container.innerHTML = html;
+
+  // Setup pinch zoom for all visible cards
+  if(deckScreenshotData){
+    for(let i = deckIdx; i <= Math.min(deckIdx+2, deckCards.length-1); i++){
+      const zone = document.getElementById(`iz-${i}`);
+      const img  = document.getElementById(`zimg-${i}`);
+      if(zone && img) setupZoom(zone, img, i);
+    }
+  }
+  setupSwipe(deckIdx);
+}
+
+// ═══════════════════════════════════════════════════
+// ZOOM — Feature 2: block swipe while zoomed
+// ═══════════════════════════════════════════════════
+function setupZoom(zone, img, cardIdx){
+  let scale=1, tx=0, ty=0;
+  let startDist=0, startScale=1;
+  let lastTap=0, dragStart=null, isPinching=false;
+
+  function clamp(v,mn,mx){ return Math.min(Math.max(v,mn),mx); }
+
+  function applyT(){
+    const mx = Math.max(0, (scale-1)*zone.offsetWidth/2);
+    const my = Math.max(0, (scale-1)*zone.offsetHeight/2);
+    tx = clamp(tx,-mx,mx); ty = clamp(ty,-my,my);
+    img.style.transform = `scale(${scale}) translate(${tx/scale}px,${ty/scale}px)`;
+    // Feature 2: update global zoom flag
+    isZooming = scale > 1;
+    const ind = document.getElementById('zindicator-'+cardIdx);
+    const hint = document.getElementById('zhint-'+cardIdx);
+    if(ind)  ind.classList.toggle('show', scale > 1);
+    if(hint) hint.style.opacity = scale > 1 ? '0' : '1';
+  }
+
+  function dist(t){ return Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY); }
+
+  zone.addEventListener('touchstart', e => {
+    if(e.touches.length === 2){
+      isPinching = true; isZooming = true;
+      startDist = dist(e.touches); startScale = scale;
+      e.preventDefault(); e.stopPropagation();
+    } else if(e.touches.length === 1){
+      const now = Date.now();
+      if(now - lastTap < 280){
+        // double-tap to toggle
+        if(scale > 1){ scale=1; tx=0; ty=0; } else { scale=2.5; }
+        applyT(); e.preventDefault(); e.stopPropagation();
+      }
+      lastTap = now;
+      if(scale > 1){
+        dragStart = { x: e.touches[0].clientX-tx, y: e.touches[0].clientY-ty };
+        e.preventDefault(); e.stopPropagation();
+      }
+    }
+  }, {passive:false});
+
+  zone.addEventListener('touchmove', e => {
+    if(e.touches.length===2 && isPinching){
+      scale = clamp(startScale*(dist(e.touches)/startDist), 1, 5);
+      applyT(); e.preventDefault(); e.stopPropagation();
+    } else if(e.touches.length===1 && scale>1 && dragStart){
+      tx = e.touches[0].clientX - dragStart.x;
+      ty = e.touches[0].clientY - dragStart.y;
+      applyT(); e.preventDefault(); e.stopPropagation();
+    }
+  }, {passive:false});
+
+  zone.addEventListener('touchend', e => {
+    if(e.touches.length < 2) isPinching = false;
+    if(e.touches.length === 0){ dragStart = null; if(scale<=1) isZooming=false; }
+  }, {passive:true});
+}
+
+// ═══════════════════════════════════════════════════
+// SWIPE — checks isZooming before moving
+// ═══════════════════════════════════════════════════
+function setupSwipe(idx){
+  const card = document.getElementById(`sc-${idx}`);
+  if(!card) return;
+  let startX=0, dragging=false, curX=0;
+
+  function onStart(x){ if(isZooming) return; startX=x; curX=x; dragging=true; card.classList.add('is-dragging'); }
+  function onMove(x){
+    if(!dragging) return;
+    if(isZooming){ dragging=false; card.style.transform=''; return; } // Feature 2
+    curX=x;
+    const dx=curX-startX;
+    card.style.transform=`translateX(${dx}px) rotate(${dx/22}deg)`;
+    const n=document.getElementById(`nope-${idx}`), g=document.getElementById(`good-${idx}`);
+    if(n) n.style.opacity=Math.min(1,Math.max(0,-dx/80));
+    if(g) g.style.opacity=Math.min(1,Math.max(0,dx/80));
+  }
+  function onEnd(){
+    if(!dragging) return; dragging=false; card.classList.remove('is-dragging');
+    const dx=curX-startX;
+    if(Math.abs(dx)>90){
+      card.classList.add(dx>0?'fly-right':'fly-left');
+      setTimeout(()=>{ deckIdx++; deckAnswerShown=false; buildDeckDOM(); }, 350);
+    } else {
+      card.classList.add('reset'); card.style.transform='';
+      const n=document.getElementById(`nope-${idx}`), g=document.getElementById(`good-${idx}`);
+      if(n) n.style.opacity=0; if(g) g.style.opacity=0;
+      setTimeout(()=>card.classList.remove('reset'), 300);
+    }
+  }
+  card.addEventListener('touchstart', e=>onStart(e.touches[0].clientX), {passive:true});
+  card.addEventListener('touchmove',  e=>{ onMove(e.touches[0].clientX); }, {passive:false});
+  card.addEventListener('touchend', onEnd);
+  card.addEventListener('mousedown', e=>onStart(e.clientX));
+  window.addEventListener('mousemove', e=>{ if(dragging) onMove(e.clientX); });
+  window.addEventListener('mouseup',   ()=>{ if(dragging) onEnd(); });
+}
+
+// ═══════════════════════════════════════════════════
+// ANSWER + VERDICT
+// ═══════════════════════════════════════════════════
+function revealAnswer(i){
+  const card = deckCards[i];
+  const footer = document.getElementById(`sf-${i}`);
+  if(!footer) return;
+  const starred = getStarred();
+  const isStarred = starred.some(s => s.question === card.question);
+  footer.innerHTML = `
+    <div class="answer-box">
+      <div class="ans-lbl">Answer</div>
+      <div class="ans-val">${escapeHtml(card.answer)}</div>
+    </div>
+    <div class="verdict-row">
+      <button class="verdict-btn btn-correct" onclick="markCard(${i},'correct')">✓ Sahi</button>
+      <button class="verdict-btn btn-wrong"   onclick="markCard(${i},'wrong')">✗ Galat</button>
+    </div>
+    <div class="card-actions-row">
+      <button class="icon-btn ${isStarred?'star-active':''}" id="starbtn-${i}" onclick="toggleStar(${i})">⭐</button>
+      <button class="icon-btn" style="flex:1" onclick="openEditModal(${i})">✏️ Edit Card</button>
+    </div>`;
+  deckAnswerShown = true;
+}
+
+function markCard(i, verdict){
+  const card = deckCards[i];
+  if(verdict === 'correct'){
+    deckCorrect.push(card);
+    updateCardWrongCount(card, -1);
+  } else {
+    deckWrong.push(card);
+    updateCardWrongCount(card, +1);
+  }
+  const el = document.getElementById(`sc-${i}`);
+  if(el) el.classList.add(verdict==='correct'?'fly-right':'fly-left');
+  setTimeout(()=>{ deckIdx++; deckAnswerShown=false; buildDeckDOM(); }, 300);
+}
+
+function updateCardWrongCount(card, delta){
+  if(!deckSubjectKey || deckSubjectKey==='__smart__' || deckSubjectKey==='__starred__') return;
+  const subjects = getSubjects(), s = subjects[deckSubjectKey];
+  if(!s) return;
+  const found = s.cards.find(c => c.question === card.question);
+  if(found){ found.wrongCount = Math.max(0,(found.wrongCount||0)+delta); found.lastPracticed=Date.now(); }
+  saveSubjectsData(subjects);
+}
+
+// ═══════════════════════════════════════════════════
+// DECK RESULTS + DAILY STATS (Feature 7)
+// ═══════════════════════════════════════════════════
+function showDeckResults(){
+  // Save scores
+  if(deckSubjectKey && deckSubjectKey !== '__smart__' && deckSubjectKey !== '__starred__'){
+    const scores = getAllScores();
+    if(!scores[deckSubjectKey]) scores[deckSubjectKey]={correct:0,wrong:0,wrongCards:[]};
+    scores[deckSubjectKey].correct += deckCorrect.length;
+    scores[deckSubjectKey].wrong   += deckWrong.length;
+    const existing = scores[deckSubjectKey].wrongCards||[];
+    const existingQs = new Set(existing.map(c=>c.question));
+    deckWrong.forEach(c=>{ if(!existingQs.has(c.question)) existing.push(c); });
+    // Remove from wrongCards those that became correct
+    deckCorrect.forEach(c=>{
+      const idx = existing.findIndex(x=>x.question===c.question);
+      if(idx!==-1) existing.splice(idx,1);
+    });
+    scores[deckSubjectKey].wrongCards = existing;
+    saveAllScores(scores);
+  }
+
+  // Feature 7: Save daily stats — count each UNIQUE card as 1
+  saveDailyRecord(deckCorrect.length + deckWrong.length, deckCorrect.length);
+
+  const total = deckCorrect.length + deckWrong.length;
+  const pct   = total > 0 ? Math.round(deckCorrect.length/total*100) : 0;
+  const emoji = pct>=80?'🎉':pct>=60?'👍':pct>=40?'😅':'💪';
+
+  const container = document.getElementById('deck-container');
+  container.innerHTML = `<div class="deck-done">
+    <div class="big-emoji">${emoji}</div>
+    <h3>Session Complete!</h3>
+    <div class="result-row">
+      <div class="result-box g"><div class="result-n g">${deckCorrect.length}</div><div class="result-l">✓ Sahi</div></div>
+      <div class="result-box r"><div class="result-n r">${deckWrong.length}</div><div class="result-l">✗ Galat</div></div>
+    </div>
+    <div style="font-size:.85rem;color:var(--dim);margin-bottom:20px">Accuracy: <strong style="color:var(--text)">${pct}%</strong> · ${total} cards</div>
+    <button class="restart-btn" onclick="restartDeck()">🔄 Dobara Practice Karo</button>
+    ${deckWrong.length>0?'<button class="review-btn" onclick="reviewWrongCards()">✗ '+deckWrong.length+' Galat Cards Review Karo</button>':''}
+  </div>`;
+}
+
+// ── DAILY STATS HELPERS ──────────────────────────────
+function todayKey(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+
+function saveDailyRecord(cards, correct){
+  const stats = getDailyStats();
+  const key   = todayKey();
+  if(!stats[key]) stats[key] = {decks:0, cards:0, correct:0};
+  stats[key].decks   += 1;
+  stats[key].cards   += cards;
+  stats[key].correct += correct;
+  saveDailyStats(stats);
+}
+
+function renderDailyStats(){
+  const wrap  = document.getElementById('daily-stats-wrap');
+  if(!wrap) return;
+  const stats = getDailyStats();
+  const keys  = Object.keys(stats).sort().reverse().slice(0,14); // last 14 days
+
+  if(!keys.length){
+    wrap.innerHTML = `<div style="text-align:center;padding:30px;color:var(--dim);font-size:.82rem;">Abhi tak koi deck practice nahi ki...<br/>Koi bhi subject kholo aur practice shuru karo!</div>`;
+    return;
+  }
+
+  let html = '';
+  keys.forEach(k => {
+    const d = stats[k];
+    const pct = d.cards > 0 ? Math.round(d.correct/d.cards*100) : 0;
+    const dateLabel = k === todayKey() ? '📅 Aaj' : new Date(k+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
+    html += `<div class="stats-day-card">
+      <div class="stats-day-date">${dateLabel}</div>
+      <div class="stats-day-row">
+        <div class="stats-day-item"><div class="stats-day-n">${d.decks}</div><div class="stats-day-l">Decks</div></div>
+        <div class="stats-day-item"><div class="stats-day-n">${d.cards}</div><div class="stats-day-l">Cards</div></div>
+        <div class="stats-day-item"><div class="stats-day-n">${d.correct}</div><div class="stats-day-l">Sahi</div></div>
+        <div class="stats-day-item"><div class="stats-day-n">${pct}%</div><div class="stats-day-l">Accuracy</div></div>
+      </div>
+      <div class="stats-day-accuracy">
+        <span style="font-size:.7rem;color:var(--green)">✓ ${d.correct}</span>
+        <div class="stats-acc-bar"><div class="stats-acc-fill" style="width:${pct}%"></div></div>
+        <span style="font-size:.7rem;color:var(--red)">✗ ${d.cards-d.correct}</span>
+      </div>
+    </div>`;
+  });
+  wrap.innerHTML = html;
+}
+
+function restartDeck(){ deckIdx=0; deckCorrect=[]; deckWrong=[]; deckAnswerShown=false; buildDeckDOM(); }
+function reviewWrongCards(){
+  const scores = getAllScores();
+  const sc = scores[deckSubjectKey]||{wrongCards:[]};
+  showWrongCardsReview(sc.wrongCards||[], deckSubjectKey);
+}
+
+// ═══════════════════════════════════════════════════
+// STAR (Feature 6) — Grouped by parent FOLDER name
+// Card star karo → parent folder ke naam se save hoga starred mein
+// Subfolder (subject) ignore hota hai
+// ═══════════════════════════════════════════════════
+
+// Helper: given a subjectKey, find which folder (top-level) it belongs to
+// Returns { folderKey, folderName, folderEmoji } or null if unfiled
+function getFolderForSubject(subjectKey){
+  const folders = getFolders();
+  for(const fk of Object.keys(folders)){
+    const f = folders[fk];
+    if((f.subjectKeys||[]).includes(subjectKey)){
+      return { folderKey: fk, folderName: f.name, folderEmoji: f.emoji };
+    }
+  }
+  return null;
+}
+
+function toggleStar(i){
+  const card = deckCards[i];
+  if(!card) return;
+  const starred = getStarred();
+  const idx = starred.findIndex(s => s.question === card.question);
+  const btn = document.getElementById('starbtn-'+i);
+  if(idx !== -1){
+    starred.splice(idx, 1);
+    if(btn){ btn.classList.remove('star-active'); }
+  } else {
+    // Determine folder grouping:
+    // - If card is in a subject that belongs to a folder → use that folder's name
+    // - If subject is unfiled → use subject name as group
+    // deckSubjectKey is the subject; for smart deck use card._subjectKey
+    const subjKey = (deckType==='smart') ? card._subjectKey : deckSubjectKey;
+    let groupName = '', groupEmoji = '⭐';
+    if(subjKey && subjKey !== '__starred__' && subjKey !== '__smart__'){
+      const folderInfo = getFolderForSubject(subjKey);
+      if(folderInfo){
+        groupName  = folderInfo.folderName;
+        groupEmoji = folderInfo.folderEmoji;
+      } else {
+        // Unfiled subject — use subject name
+        const s = getSubjects()[subjKey];
+        groupName  = s ? s.name : '';
+        groupEmoji = s ? s.emoji : '⭐';
+      }
+    }
+    starred.push({
+      question:  card.question,
+      answer:    card.answer,
+      type:      card.type||'fact',
+      starredAt: Date.now(),
+      groupName,       // folder or subject name — used for grouping
+      groupEmoji
+    });
+    if(btn){ btn.classList.add('star-active'); }
+  }
+  saveStarred(starred);
+}
+
+function openStarredDeck(){
+  const starred = getStarred();
+  if(!starred.length){ alert('Koi starred card nahi abhi!\nDeck mein ⭐ button se card star karo.'); return; }
+  renderStarredHome();
+}
+
+// ── STARRED HOME — folder-grouped list ───────────────
+function renderStarredHome(){
+  const starred = getStarred();
+
+  // Group by groupName (folder/subject)
+  const groups = {}; // groupName → { emoji, cards[] }
+  starred.forEach(card => {
+    const name  = card.groupName  || 'General';
+    const emoji = card.groupEmoji || '⭐';
+    if(!groups[name]) groups[name] = { emoji, cards: [] };
+    groups[name].cards.push(card);
+  });
+
+  const groupNames = Object.keys(groups).sort();
+
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  const detailEl = document.getElementById('screen-detail');
+  detailEl.classList.add('active');
+
+  let groupsHtml = '';
+  groupNames.forEach(name => {
+    const g = groups[name];
+    groupsHtml += `
+      <div class="folder-card" style="margin-bottom:12px;">
+        <div class="folder-header" onclick="openStarredGroupDeck(${JSON.stringify(name)})">
+          <div class="folder-icon">${g.emoji}</div>
+          <div class="folder-info">
+            <div class="folder-name">${escapeHtml(name)}</div>
+            <div class="folder-meta">${g.cards.length} starred cards</div>
+          </div>
+          <button onclick="event.stopPropagation();clearStarredGroup(${JSON.stringify(name)})" style="background:rgba(255,101,132,.12);border:1px solid rgba(255,101,132,.25);border-radius:10px;padding:7px 12px;color:#fda4af;font-size:.75rem;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;flex-shrink:0;margin-right:6px;">🗑</button>
+          <span style="color:var(--dim);font-size:1.1rem;">›</span>
+        </div>
+      </div>`;
+  });
+
+  detailEl.innerHTML = `
+    <button class="back-btn" onclick="showScreen('home')">← Wapas Jao</button>
+    <div class="d-name">⭐ Starred Cards</div>
+    <div class="d-meta">${starred.length} total cards · ${groupNames.length} groups</div>
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-n def">${starred.length}</div><div class="stat-l">Total</div></div>
+      <div class="stat-box"><div class="stat-n def">${groupNames.length}</div><div class="stat-l">Groups</div></div>
+      <div class="stat-box"><div class="stat-n def">⭐</div><div class="stat-l">Starred</div></div>
+    </div>
+    <button onclick="openAllStarredDeck()" style="display:block;width:100%;padding:14px;background:linear-gradient(135deg,rgba(255,215,0,.2),rgba(255,165,0,.1));color:var(--gold);border:1px solid rgba(255,215,0,.35);border-radius:14px;font-family:'Plus Jakarta Sans',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;margin-bottom:18px;">🔀 Saare Starred Cards (Mixed)</button>
+    <div class="section-lbl">📂 Group se practice karo</div>
+    ${groupsHtml}`;
+}
+
+// Open a specific group deck
+function openStarredGroupDeck(groupName){
+  const starred = getStarred();
+  const cards = starred.filter(c => (c.groupName||'General') === groupName);
+  if(!cards.length){ alert('Koi card nahi is group mein!'); return; }
+
+  // Shuffle
+  const deck = [...cards];
+  for(let i=deck.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [deck[i],deck[j]]=[deck[j],deck[i]]; }
+
+  deckCards=deck; deckIdx=0; deckCorrect=[]; deckWrong=[];
+  deckAnswerShown=false; deckScreenshotData=null;
+  deckSubjectKey='__starred__'; deckType='starred';
+
+  const detailEl = document.getElementById('screen-detail');
+  detailEl.innerHTML = `
+    <button class="back-btn" onclick="renderStarredHome()">← Starred Groups</button>
+    <div class="d-name">⭐ ${escapeHtml(groupName)}</div>
+    <div class="d-meta">${deck.length} starred cards</div>
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-n def">${deck.length}</div><div class="stat-l">Cards</div></div>
+      <div class="stat-box"><div class="stat-n def">⭐</div><div class="stat-l">Starred</div></div>
+      <div class="stat-box"><div class="stat-n def">🎯</div><div class="stat-l">Focus</div></div>
+    </div>
+    <div id="deck-container"></div>`;
+  buildDeckDOM();
+}
+
+// Open all starred mixed
+function openAllStarredDeck(){
+  const starred = getStarred();
+  const deck = [...starred];
+  for(let i=deck.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [deck[i],deck[j]]=[deck[j],deck[i]]; }
+
+  deckCards=deck; deckIdx=0; deckCorrect=[]; deckWrong=[];
+  deckAnswerShown=false; deckScreenshotData=null;
+  deckSubjectKey='__starred__'; deckType='starred';
+
+  const detailEl = document.getElementById('screen-detail');
+  detailEl.innerHTML = `
+    <button class="back-btn" onclick="renderStarredHome()">← Starred Groups</button>
+    <div class="d-name">⭐ Saare Starred Cards</div>
+    <div class="d-meta">${deck.length} cards mixed</div>
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-n def">${deck.length}</div><div class="stat-l">Cards</div></div>
+      <div class="stat-box"><div class="stat-n def">⭐</div><div class="stat-l">All Groups</div></div>
+      <div class="stat-box"><div class="stat-n def">🔀</div><div class="stat-l">Shuffled</div></div>
+    </div>
+    <div id="deck-container"></div>`;
+  buildDeckDOM();
+}
+
+// Clear all starred cards in a group
+function clearStarredGroup(groupName){
+  if(!confirm(`"${groupName}" ke saare starred cards hata do?`)) return;
+  const starred = getStarred().filter(c => (c.groupName||'General') !== groupName);
+  saveStarred(starred);
+  if(starred.length === 0) showScreen('home');
+  else renderStarredHome();
+}
+
+// ═══════════════════════════════════════════════════
+// SMART REVIEW (Feature 3) — Weekly, weighted, auto-remove on correct
+// ═══════════════════════════════════════════════════
+const SMART_REVIEW_KEY = 'flashsnap_smart_v1';
+
+function buildSmartReviewDeck(){
+  const subjects = getSubjects();
+  const allCards = [];
+  Object.keys(subjects).forEach(subjectKey => {
+    const s = subjects[subjectKey];
+    s.cards.forEach(card => {
+      const wc = card.wrongCount||0;
+      if(wc > 0){
+        const repeats = Math.min(wc, 5);
+        for(let r=0;r<repeats;r++){
+          allCards.push({ ...card, _subjectKey: subjectKey, _wrongCount: wc });
+        }
+      }
+    });
+  });
+  // Shuffle
+  for(let i=allCards.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [allCards[i],allCards[j]]=[allCards[j],allCards[i]]; }
+  return allCards;
+}
+
+function checkSmartReview(){
+  const deck = buildSmartReviewDeck();
+  if(!deck.length){ document.getElementById('smart-review-banner').style.display='none'; return; }
+  const sr = JSON.parse(localStorage.getItem(SMART_REVIEW_KEY)||'{}');
+  const now = Date.now();
+  if(!sr.lastShown || (now - sr.lastShown) > 6*24*60*60*1000){ // every 6 days
+    showSmartReviewBanner(deck);
+  }
+}
+
+function showSmartReviewBanner(deck){
+  const banner = document.getElementById('smart-review-banner');
+  const sub    = document.getElementById('srb-sub');
+  const chips  = document.getElementById('srb-chips');
+  const subjectCount = {};
+  deck.forEach(c=>{ subjectCount[c._subjectKey]=(subjectCount[c._subjectKey]||0)+1; });
+  const subjects = getSubjects();
+  const uniqueWrong = new Set(deck.map(c=>c.question)).size;
+  sub.textContent = `${uniqueWrong} galat cards — zyada galat = zyada baar aayega`;
+  chips.innerHTML = Object.entries(subjectCount).sort((a,b)=>b[1]-a[1]).slice(0,5)
+    .map(([key,cnt]) => `<div class="srb-chip">${subjects[key]?.name||key} (${cnt})</div>`).join('');
+  banner.style.display='block';
+  localStorage.setItem(SMART_REVIEW_KEY, JSON.stringify({lastShown:Date.now()}));
+}
+
+function startSmartReview(){
+  const deck = buildSmartReviewDeck();
+  if(!deck.length){ alert('Koi galat card nahi!'); return; }
+  document.getElementById('smart-review-banner').style.display='none';
+
+  // For smart review, markCard needs to update the correct subject
+  // Override: we store _subjectKey per card
+  deckCards = deck; deckIdx=0; deckCorrect=[]; deckWrong=[];
+  deckAnswerShown=false; deckScreenshotData=null;
+  deckSubjectKey='__smart__'; deckType='smart';
+
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  const detailEl=document.getElementById('screen-detail');
+  detailEl.classList.add('active');
+  detailEl.innerHTML=`
+    <button class="back-btn" onclick="showScreen('home')">← Wapas Jao</button>
+    <div class="d-name">🧠 Smart Review</div>
+    <div class="d-meta">Galat cards — weighted repetition</div>
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-n def">${deck.length}</div><div class="stat-l">Questions</div></div>
+      <div class="stat-box"><div class="stat-n def">${new Set(deck.map(c=>c.question)).size}</div><div class="stat-l">Unique</div></div>
+      <div class="stat-box"><div class="stat-n def">${new Set(deck.map(c=>c._subjectKey)).size}</div><div class="stat-l">Subjects</div></div>
+    </div>
+    <div id="deck-container"></div>`;
+  buildDeckDOM();
+}
+
+// Override markCard to handle smart deck per-subject updates
+const _origMarkCard = markCard;
+function markCardSmart(i, verdict, subjectKey){
+  const card = deckCards[i];
+  if(verdict==='correct'){
+    deckCorrect.push(card);
+    // Decrease wrongCount in the card's own subject
+    const subjects = getSubjects(), s = subjects[subjectKey];
+    if(s){
+      const found = s.cards.find(c=>c.question===card.question);
+      if(found){ found.wrongCount=Math.max(0,(found.wrongCount||0)-1); found.lastPracticed=Date.now(); }
+      saveSubjectsData(subjects);
+    }
+  } else {
+    deckWrong.push(card);
+    const subjects = getSubjects(), s = subjects[subjectKey];
+    if(s){
+      const found = s.cards.find(c=>c.question===card.question);
+      if(found){ found.wrongCount=(found.wrongCount||0)+1; found.lastPracticed=Date.now(); }
+      saveSubjectsData(subjects);
+    }
+  }
+  const el=document.getElementById(`sc-${i}`);
+  if(el) el.classList.add(verdict==='correct'?'fly-right':'fly-left');
+  setTimeout(()=>{ deckIdx++; deckAnswerShown=false; buildDeckDOM(); },300);
+}
+
+// Patch revealAnswer to use smart mark when needed
+const _origRevealAnswer = revealAnswer;
+window.revealAnswer = function(i){
+  const card = deckCards[i];
+  const footer = document.getElementById(`sf-${i}`);
+  if(!footer) return;
+  const starred = getStarred();
+  const isStarred = starred.some(s=>s.question===card.question);
+  const isSmart = deckType==='smart';
+  const subjectKey = isSmart ? card._subjectKey : deckSubjectKey;
+
+  footer.innerHTML = `
+    <div class="answer-box">
+      <div class="ans-lbl">Answer</div>
+      <div class="ans-val">${escapeHtml(card.answer)}</div>
+    </div>
+    <div class="verdict-row">
+      <button class="verdict-btn btn-correct" onclick="${isSmart?'markCardSmart':'markCard'}(${i},'correct'${isSmart?`,'${subjectKey}'`:''})">✓ Sahi</button>
+      <button class="verdict-btn btn-wrong"   onclick="${isSmart?'markCardSmart':'markCard'}(${i},'wrong'${isSmart?`,'${subjectKey}'`:''})">✗ Galat</button>
+    </div>
+    <div class="card-actions-row">
+      <button class="icon-btn ${isStarred?'star-active':''}" id="starbtn-${i}" onclick="toggleStar(${i})">⭐</button>
+      <button class="icon-btn" style="flex:1" onclick="openEditModal(${i})">✏️ Edit</button>
+    </div>`;
+  deckAnswerShown=true;
+};
+
+// ═══════════════════════════════════════════════════
+// EDIT CARD (Feature 4) — saves to original subject/folder
+// ═══════════════════════════════════════════════════
+let editCardIdx=null, editCardType='fact';
+
+function openEditModal(idx){
+  const card=deckCards[idx]; if(!card) return;
+  editCardIdx=idx; editCardType=card.type||'fact';
+  document.getElementById('edit-q').value=card.question||'';
+  document.getElementById('edit-a').value=card.answer||'';
+  setEditType(editCardType);
+  document.getElementById('edit-modal-overlay').classList.add('open');
+}
+
+function closeEditModal(e){
+  if(e && e.target!==document.getElementById('edit-modal-overlay')) return;
+  document.getElementById('edit-modal-overlay').classList.remove('open');
+  editCardIdx=null;
+}
+
+function setEditType(type){
+  editCardType=type;
+  ['fact','concept','image'].forEach(t=>{
+    const el=document.getElementById(`etype-${t}`);
+    if(el) el.classList.toggle('active',t===type);
+  });
+}
+
+function saveEditedCard(){
+  const q=document.getElementById('edit-q').value.trim();
+  const a=document.getElementById('edit-a').value.trim();
+  if(!q||!a){ alert('Question aur answer dono daalo!'); return; }
+  if(editCardIdx===null) return;
+
+  const origQ = deckCards[editCardIdx].question;
+  const origA = deckCards[editCardIdx].answer;
+
+  // Feature 4: Save to original subject (works across all deck types)
+  // For smart deck, use card._subjectKey; else use deckSubjectKey
+  const targetSubjectKey = (deckType==='smart') ? deckCards[editCardIdx]._subjectKey : deckSubjectKey;
+  saveCardEditToSubject(targetSubjectKey, origQ, origA, q, a, editCardType, editCardIdx);
+
+  // Update in-memory deckCards
+  deckCards[editCardIdx].question=q;
+  deckCards[editCardIdx].answer=a;
+  deckCards[editCardIdx].type=editCardType;
+
+  document.getElementById('edit-modal-overlay').classList.remove('open');
+  editCardIdx=null;
+  buildDeckDOM();
+}
+
+function saveCardEditToSubject(subjectKey, origQ, origA, newQ, newA, newType, fallbackIdx){
+  if(!subjectKey || subjectKey==='__smart__'||subjectKey==='__starred__') return;
+  const subjects=getSubjects(), s=subjects[subjectKey];
+  if(!s) return;
+  // Find by original question (most reliable)
+  let cardIdx = s.cards.findIndex(c=>c.question===origQ && c.answer===origA);
+  if(cardIdx===-1) cardIdx = fallbackIdx; // fallback by position
+  if(cardIdx>=0 && cardIdx<s.cards.length){
+    s.cards[cardIdx].question=newQ;
+    s.cards[cardIdx].answer=newA;
+    s.cards[cardIdx].type=newType;
+    saveSubjectsData(subjects);
+  }
+}
+
+function deleteCardFromEdit(){
+  if(editCardIdx===null) return;
+  if(!confirm('Is card ko permanently delete karo?')) return;
+  const targetSubjectKey = (deckType==='smart') ? deckCards[editCardIdx]._subjectKey : deckSubjectKey;
+  deleteCardPermanently(editCardIdx, targetSubjectKey);
+  document.getElementById('edit-modal-overlay').classList.remove('open');
+  editCardIdx=null;
+  deckIdx=Math.min(deckIdx, deckCards.length-1);
+  buildDeckDOM();
+}
+
+function deleteCardPermanently(idx, subjectKey){
+  const orig=deckCards[idx];
+  deckCards.splice(idx,1);
+  if(!subjectKey || subjectKey==='__smart__'||subjectKey==='__starred__') return;
+  const subjects=getSubjects(), s=subjects[subjectKey]; if(!s) return;
+  s.cards=s.cards.filter(c=>!(c.question===orig.question && c.answer===orig.answer));
+  saveSubjectsData(subjects);
+}
+
+// ═══════════════════════════════════════════════════
+// ADD / GENERATE
+// ═══════════════════════════════════════════════════
+function resetAdd(){
+  document.getElementById('subject-name').value='';
+  document.getElementById('upload-title').textContent='Tap karke upload karo';
+  document.getElementById('upload-sub').textContent='ya drag & drop karo';
+  document.getElementById('preview-img').style.display='none';
+  document.getElementById('error-box').style.display='none';
+  document.getElementById('generate-btn').disabled=true;
+  imageBase64=null; imageType=null;
+}
+
+document.getElementById('file-input').addEventListener('change', e=>{ if(e.target.files[0]) handleFile(e.target.files[0]); });
+const ub=document.getElementById('upload-box');
+ub.addEventListener('dragover', e=>{ e.preventDefault(); ub.classList.add('drag'); });
+ub.addEventListener('dragleave', ()=>ub.classList.remove('drag'));
+ub.addEventListener('drop', e=>{ e.preventDefault(); ub.classList.remove('drag'); if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+document.getElementById('subject-name').addEventListener('input', checkBtn);
+
+function handleFile(file){
+  if(!file.type.startsWith('image/')) return;
+  const rawType=file.type;
+  document.getElementById('preview-img').src=URL.createObjectURL(file);
+  document.getElementById('preview-img').style.display='block';
+  document.getElementById('upload-title').textContent='Screenshot ready! ✅';
+  document.getElementById('upload-sub').textContent='Tap to change';
+  const r=new FileReader();
+  r.onload=e=>{
+    const raw=e.target.result.split(',')[1];
+    // Feature 5: compress before store
+    compressImage(raw, rawType, (compressed, compType)=>{
+      imageBase64=compressed; imageType=compType; checkBtn();
+    });
+  };
+  r.readAsDataURL(file);
+}
+
+function checkBtn(){ document.getElementById('generate-btn').disabled=!(document.getElementById('subject-name').value.trim() && imageBase64); }
+
+async function generateFlashcards(){
+  const name=document.getElementById('subject-name').value.trim();
+  const apiKey=getApiKey();
+  if(!apiKey){ showError('⚠️ Pehle 📊 Stats tab mein key daalo!'); return; }
+  if(!imageBase64||!name){ showError('Subject naam aur screenshot dono daalo!'); return; }
+  showScreen('loading');
+
+  const prompt=`You are an expert medical flashcard generator for Indian PG exams (NEET PG, AIIMS, USMLE).
+
+Extract EVERY SINGLE testable fact. Target: 50-80 cards minimum.
+
+MANDATORY COVERAGE:
+- Every structure: nerve supply, blood supply, insertion/origin, function
+- Every classification with ALL entries
+- Every table row (each row = separate card)
+- Every bullet point (each bullet = separate card)
+- Every number, percentage, age, duration
+- Every drug: mechanism, dose, indication
+- Every eponym with what it means
+- Every mnemonic with expansion
+
+STRICTLY FORBIDDEN:
+- "What is the main topic?" or vague questions
+- NEVER put the answer word inside the question!
+  BAD: "What vessel is labeled 'Left hepatic vein'?"
+  GOOD: "Which vein drains the left lobe of liver?"
+
+GOOD question styles:
+- "Nerve supply of [structure]?"
+- "Insertion of [muscle]?"
+- "Which segment drains into [vessel]?"
+- "Type of epiphysis of [bone]?"
+
+RULES:
+1. Read EVERY word: headings, bullets, tables, labels
+2. "answer": MAXIMUM 4 WORDS. Ultra-short.
+3. "type": "fact" | "concept" | "image"
+4. For "image" type: ask fact-based NEET-style questions about what is EXPLICITLY WRITTEN
+
+Return ONLY valid JSON array, zero markdown:
+[{"question":"Nerve supply of subscapularis?","answer":"Lower subscapular n.","type":"fact"}]
+
+Target: 50-80 cards. No generic questions.`;
+
+  async function callGemini(retries=3){
+    for(let attempt=1;attempt<=retries;attempt++){
+      try{
+        const res=await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+          {method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            contents:[{parts:[
+              {inline_data:{mime_type:imageType,data:imageBase64}},
+              {text:prompt}
+            ]}],
+            generationConfig:{temperature:0.1,maxOutputTokens:8192,thinkingConfig:{thinkingBudget:0}}
+          })}
+        );
+        const data=await res.json();
+        if(data.error){
+          const msg=data.error.message||'';
+          const isRetryable=msg.includes('high demand')||msg.includes('503')||msg.includes('overloaded');
+          if(isRetryable && attempt<retries){
+            const wait=attempt*8000;
+            const lp=document.getElementById('loading-msg');
+            if(lp) lp.textContent=`Server busy — ${attempt}/${retries} retry (${wait/1000}s wait)...`;
+            await new Promise(r=>setTimeout(r,wait));
+            continue;
+          }
+          throw new Error(data.error.message);
+        }
+        return data;
+      }catch(e){
+        if(attempt===retries) throw e;
+        await new Promise(r=>setTimeout(r,attempt*8000));
+      }
+    }
+  }
+
+  try{
+    const data=await callGemini();
+    let raw=data.candidates[0].content.parts[0].text.trim();
+    let clean=raw.replace(/```json|```/g,'').trim();
+    const si=clean.indexOf('['), ei=clean.lastIndexOf(']');
+    if(si!==-1&&ei!==-1) clean=clean.substring(si,ei+1);
+    let cards;
+    try{ cards=JSON.parse(clean); }
+    catch(e){
+      const lb=clean.lastIndexOf('},');
+      if(lb===-1) throw new Error('Parse fail. Chhota screenshot try karo.');
+      cards=JSON.parse(clean.substring(0,lb+1)+']');
+    }
+    cards=cards.filter(card=>{
+      const q=card.question.toLowerCase(), a=card.answer.toLowerCase().trim();
+      const labeledPattern=/labeled ['"]?([^'"?]+)['"]?/i.exec(card.question);
+      const labeledMatch=labeledPattern&&labeledPattern[1].toLowerCase().trim()===a;
+      const generic=['main topic','what does this image','what is shown here'].some(p=>q.includes(p));
+      return !labeledMatch && !generic;
+    });
+
+    const subjects=getSubjects();
+    const idx=Object.keys(subjects).length;
+    const key=name.toLowerCase().replace(/\s+/g,'-')+'-'+Date.now();
+    subjects[key]={
+      name, emoji:EMOJIS[idx%EMOJIS.length], color:COLORS[idx%COLORS.length],
+      date:new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}),
+      cards,
+      screenshotData:'data:'+imageType+';base64,'+imageBase64
+    };
+    saveSubjectsData(subjects);
+    currentSubjectKey=key; deckSubjectKey=key;
+    document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+    renderDetail(key);
+    document.getElementById('screen-detail').classList.add('active');
+  }catch(err){
+    showScreen('add'); showError('Error: '+err.message);
+  }
+}
+
+function showError(msg){ const el=document.getElementById('error-box'); el.textContent=msg; el.style.display='block'; }
+
+// ═══════════════════════════════════════════════════
+// CALENDAR REMINDERS
+// ═══════════════════════════════════════════════════
+function addAllRemindersToCalendar(key){
+  const subj=getSubjects()[key];
+  const sc=getAllScores()[key]||{};
+  const wrongCount=sc.wrongCards?sc.wrongCards.length:0;
+  const subjName=subj?subj.name:'Subject';
+  const now=new Date();
+  const scores=getAllScores();
+  if(!scores[key]) scores[key]={correct:0,wrong:0,wrongCards:[]};
+  [7,15,30].forEach(d=>{
+    const fireAt=now.getTime()+d*24*60*60*1000;
+    if(d===7) scores[key].reminder7=fireAt;
+    else if(d===15) scores[key].reminder15=fireAt;
+    else scores[key].reminder30=fireAt;
+  });
+  saveAllScores(scores);
+  [7,15,30].forEach((days,idx)=>{
+    setTimeout(()=>{
+      const eventDate=new Date(now.getTime()+days*24*60*60*1000);
+      const pad=n=>String(n).padStart(2,'0');
+      const fmt=d=>`${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
+      const title=encodeURIComponent(`🎴 FlashSnap: ${subjName} — Day ${days} Revision`);
+      const details=encodeURIComponent(`FlashSnap spaced repetition!\n📚 Subject: ${subjName}\n❌ Galat cards: ${wrongCount}\n📅 Day ${days} revision`);
+      const url=`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${fmt(eventDate)}/${fmt(new Date(eventDate.getTime()+86400000))}&details=${details}&sf=true&output=xml`;
+      window.open(url,'_blank');
+    }, idx*800);
+  });
+  alert(`✅ 3 reminders Google Calendar mein add ho rahe hain!\n(Popup blocker allow karo)`);
+}
+
+// ═══════════════════════════════════════════════════
+// LONG PRESS DELETE
+// ═══════════════════════════════════════════════════
+let lpKey=null, lpTimer=null;
+
+function setupLongPress(){
+  document.addEventListener('touchstart', e=>{
+    const card=e.target.closest('[data-key]');
+    if(!card) return;
+    const key=card.getAttribute('data-key');
+    if(!key) return;
+    lpTimer=setTimeout(()=>{
+      lpKey=key;
+      openLpMenu(key);
+      if(navigator.vibrate) navigator.vibrate(50);
+    }, 600);
+  }, {passive:true});
+  document.addEventListener('touchend',  ()=>{ if(lpTimer){ clearTimeout(lpTimer); lpTimer=null; } }, {passive:true});
+  document.addEventListener('touchmove', ()=>{ if(lpTimer){ clearTimeout(lpTimer); lpTimer=null; } }, {passive:true});
+}
+
+function openLpMenu(key){
+  const s=getSubjects()[key]; if(!s) return;
+  document.getElementById('lp-icon').textContent=s.emoji;
+  document.getElementById('lp-name').textContent=s.name;
+  document.getElementById('lp-meta').textContent=s.cards.length+' cards · '+s.date;
+  document.getElementById('lp-overlay').classList.add('open');
+}
+function closeLpMenu(){ document.getElementById('lp-overlay').classList.remove('open'); lpKey=null; }
+function confirmDeleteSubject(){
+  if(!lpKey) return;
+  const keyToDelete=lpKey;
+  const s=getSubjects()[keyToDelete];
+  closeLpMenu();
+  if(!confirm('"'+(s?s.name:'Subject')+'" delete karo? (Undo nahi hoga)')) return;
+  const d=getSubjects(); delete d[keyToDelete]; saveSubjectsData(d);
+  const sc=getAllScores(); delete sc[keyToDelete]; saveAllScores(sc);
+  const folders=getFolders();
+  Object.keys(folders).forEach(fk=>{ folders[fk].subjectKeys=(folders[fk].subjectKeys||[]).filter(k=>k!==keyToDelete); });
+  saveFolders(folders);
+  renderHome();
+}
+
+// ═══════════════════════════════════════════════════
+// MANUAL CARD CREATOR
+// ═══════════════════════════════════════════════════
+let manualType='fact', manualTempCards=[];
+
+function populateManualSubjects(){
+  const sel=document.getElementById('manual-subject-select'); if(!sel) return;
+  const subjects=getSubjects();
+  sel.innerHTML='<option value="">-- Subject select karo --</option>';
+  Object.keys(subjects).forEach(k=>{
+    const s=subjects[k];
+    sel.innerHTML+=`<option value="${k}">${s.emoji} ${s.name}</option>`;
+  });
+  sel.innerHTML+=`<option value="__new__">➕ Naya Subject banao</option>`;
+}
+
+function setManualType(type){
+  manualType=type;
+  ['fact','concept','image'].forEach(t=>{
+    const el=document.getElementById(`mtype-${t}`);
+    if(el) el.classList.toggle('active',t===type);
+  });
+  updateManualPreview();
+}
+
+function updateManualPreview(){
+  const q=document.getElementById('manual-q')?.value.trim();
+  const a=document.getElementById('manual-a')?.value.trim();
+  const pq=document.getElementById('preview-q');
+  const pa=document.getElementById('preview-a');
+  if(pq) pq.textContent=q||'Question yahan dikhega...';
+  if(pa) pa.textContent=a||'Answer';
+}
+
+function updateCharCount(inputId,countId,max){
+  const el=document.getElementById(inputId), ct=document.getElementById(countId);
+  if(el&&ct) ct.textContent=`${el.value.length}/${max}`;
+}
+
+function saveManualCard(){
+  const selEl=document.getElementById('manual-subject-select');
+  const q=document.getElementById('manual-q').value.trim();
+  const a=document.getElementById('manual-a').value.trim();
+  const errEl=document.getElementById('manual-error');
+  if(!q){ errEl.textContent='Question daalo!'; errEl.style.display='block'; return; }
+  if(!a){ errEl.textContent='Answer daalo!'; errEl.style.display='block'; return; }
+  if(!selEl.value){ errEl.textContent='Subject select karo!'; errEl.style.display='block'; return; }
+  errEl.style.display='none';
+  manualTempCards.push({question:q,answer:a,type:manualType,manual:true});
+  renderManualSavedList();
+  document.getElementById('manual-saved-wrap').style.display='block';
+  document.getElementById('manual-q').value='';
+  document.getElementById('manual-a').value='';
+  updateManualPreview();
+  updateCharCount('manual-q','qcount',150);
+}
+
+function renderManualSavedList(){
+  const list=document.getElementById('manual-saved-list');
+  const label=document.getElementById('manual-saved-label');
+  if(!list) return;
+  if(label) label.textContent=`${manualTempCards.length} card${manualTempCards.length>1?'s':''} ready`;
+  list.innerHTML=manualTempCards.map((c,i)=>`
+    <div class="saved-card-item">
+      <div class="saved-card-info">
+        <div class="saved-card-q">${escapeHtml(c.question)}</div>
+        <div class="saved-card-a">→ ${escapeHtml(c.answer)}</div>
+      </div>
+      <button class="saved-card-del" onclick="deleteManualCard(${i})">🗑</button>
+    </div>`).join('');
+}
+
+function deleteManualCard(i){ manualTempCards.splice(i,1); if(!manualTempCards.length) document.getElementById('manual-saved-wrap').style.display='none'; else renderManualSavedList(); }
+function clearManualForm(){ document.getElementById('manual-q').value=''; document.getElementById('manual-a').value=''; updateManualPreview(); updateCharCount('manual-q','qcount',150); }
+
+function finalizeManualCards(){
+  const selEl=document.getElementById('manual-subject-select');
+  if(!selEl.value){ alert('Subject select karo!'); return; }
+  if(!manualTempCards.length){ alert('Pehle cards banao!'); return; }
+  if(selEl.value==='__new__'){
+    const newName=prompt('Naya subject naam daalo:'); if(!newName) return;
+    const subjects=getSubjects(), idx=Object.keys(subjects).length;
+    const key=newName.toLowerCase().replace(/\s+/g,'-')+'-'+Date.now();
+    subjects[key]={name:newName,emoji:EMOJIS[idx%EMOJIS.length],color:COLORS[idx%COLORS.length],
+      date:new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}),cards:[...manualTempCards],screenshotData:null};
+    saveSubjectsData(subjects);
+    alert(`✅ ${manualTempCards.length} cards "${newName}" mein save ho gaye!`);
+  } else {
+    const subjects=getSubjects(), s=subjects[selEl.value];
+    if(!s){ alert('Subject nahi mila!'); return; }
+    s.cards=[...s.cards,...manualTempCards];
+    saveSubjectsData(subjects);
+    alert(`✅ ${manualTempCards.length} cards "${s.name}" mein add ho gaye! Total: ${s.cards.length}`);
+  }
+  manualTempCards=[]; document.getElementById('manual-saved-wrap').style.display='none';
+  document.getElementById('manual-q').value=''; document.getElementById('manual-a').value='';
+  updateManualPreview(); showScreen('home');
+}
+
+// ═══════════════════════════════════════════════════
+// EXPORT / IMPORT  — reads from IDB cache
+// ═══════════════════════════════════════════════════
+function exportFlashSnapData(){
+  const data={
+    version:'flashsnap-v11-idb',
+    exportDate:new Date().toISOString(),
+    subjects:  _cache.subjects,
+    scores:    _cache.scores,
+    folders:   _cache.folders,
+    starred:   _cache.starred,
+    dailyStats:_cache.daily,
+    apiKey:    localStorage.getItem(API_KEY_STORE)||''
+  };
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url;
+  a.download='FlashSnap_Backup_'+new Date().toISOString().split('T')[0]+'.json';
+  a.click(); URL.revokeObjectURL(url);
+  const msg=document.getElementById('backup-msg');
+  if(msg){ msg.style.display='block'; msg.textContent='✅ Backup downloaded!'; }
+}
+
+function importFlashSnapData(e){
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=async function(ev){
+    try{
+      const data=JSON.parse(ev.target.result);
+      if(!confirm('Purana data replace ho jaayega. Sure?')) return;
+      if(data.subjects){  _cache.subjects=data.subjects;  await idbSet('subjects',data.subjects); }
+      if(data.scores){    _cache.scores=data.scores;      await idbSet('scores',data.scores); }
+      if(data.folders){   _cache.folders=data.folders;    await idbSet('folders',data.folders); }
+      if(data.starred){   _cache.starred=data.starred;    await idbSet('starred',data.starred); }
+      if(data.dailyStats){_cache.daily=data.dailyStats;   await idbSet('daily',data.dailyStats); }
+      if(data.apiKey){
+        localStorage.setItem(API_KEY_STORE,data.apiKey);
+        const inp=document.getElementById('api-key-input'); if(inp) inp.value=data.apiKey;
+      }
+      const msg=document.getElementById('backup-msg');
+      if(msg){ msg.style.display='block'; msg.style.color='#4ade80'; msg.textContent='✅ Data import ho gaya!'; }
+      setTimeout(()=>{ renderHome(); showScreen('home'); },1200);
+    }catch(err){ alert('❌ Error: '+err.message); }
+  };
+  reader.readAsText(file); e.target.value='';
+}
+
+// ═══════════════════════════════════════════════════
+// INIT — wait for IDB before rendering
+// ═══════════════════════════════════════════════════
+window.onerror=function(msg,src,line,col,err){
+  document.body.style.cssText='background:#0a0a12;color:#f87171;font-family:monospace;padding:20px;';
+  document.body.innerHTML='<h2 style="color:#a78bfa">🩺 FlashSnap Error</h2><pre style="background:#1a0a0a;padding:12px;border-radius:8px;font-size:12px;white-space:pre-wrap">'+msg+'\nLine:'+line+'\n'+(err?err.stack:'')+'</pre>';
+  return false;
+};
+
+(async function boot(){
+  try{
+    await initDB();           // Load IDB → cache (+ migrate localStorage)
+    renderHome();
+    setupLongPress();
+    const sv=getApiKey(); if(sv) document.getElementById('api-key-input').value=sv;
+  } catch(e){
+    document.body.innerHTML='<pre style="color:#f87171;padding:20px">'+e.message+'\n'+e.stack+'</pre>';
+  }
+})();
+
+// PWA
+if('serviceWorker' in navigator){ window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js').catch(()=>{})); }
+
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); deferredPrompt=e; showInstallBanner(); });
+
+function showInstallBanner(){
+  if(document.getElementById('install-banner')) return;
+  const b=document.createElement('div'); b.id='install-banner';
+  b.style.cssText='position:fixed;bottom:85px;left:16px;right:16px;z-index:200;background:linear-gradient(135deg,#1a1a2e,#0f0f1a);border:1px solid rgba(108,99,255,.4);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,.4);';
+  b.innerHTML=`<div style="font-size:1.8rem">🎴</div><div style="flex:1"><div style="font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;color:#f0ece4">FlashSnap Install Karo!</div><div style="font-size:.72rem;color:#44445a;margin-top:2px">Home screen pe app jaisa</div></div><button onclick="installApp()" style="background:#6c63ff;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:.8rem;font-weight:600;cursor:pointer;">Install</button><button onclick="this.closest('#install-banner').remove()" style="background:none;border:none;color:#44445a;font-size:1.1rem;cursor:pointer;padding:4px;">✕</button>`;
+  document.body.appendChild(b);
+}
+
+async function installApp(){
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt=null;
+  const b=document.getElementById('install-banner'); if(b) b.remove();
+}
+</script>
+</body>
+</html>
