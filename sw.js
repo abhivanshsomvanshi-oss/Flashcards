@@ -1,90 +1,46 @@
-// ═══════════════════════════════════════════════════
-// FlashSnap Service Worker
-// Strategy: Cache-first for app shell, Network-first for API calls
-// ═══════════════════════════════════════════════════
-
-const CACHE_NAME = 'flashsnap-shell-v1';
-
-// App shell — ye files offline mein bhi kaam karengi
-const SHELL_URLS = [
+// FlashSnap Service Worker v1
+const CACHE_NAME = 'flashsnap-v1';
+const ASSETS = [
   './',
   './index.html',
-  './manifest.json'
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png',
+  'https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap'
 ];
 
-// ── INSTALL — cache app shell ────────────────────────
+// Install: cache all assets
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(SHELL_URLS);
-    }).then(() => {
-      // Immediately activate without waiting for old SW
-      return self.skipWaiting();
-    })
+    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
   );
+  self.skipWaiting();
 });
 
-// ── ACTIVATE — delete old caches ────────────────────
+// Activate: remove old caches
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(
-        keys
-          .filter(key => key !== CACHE_NAME)
-          .map(key => caches.delete(key))
-      )
-    ).then(() => self.clients.claim())
+      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+    )
   );
+  self.clients.claim();
 });
 
-// ── FETCH — strategy per request type ───────────────
+// Fetch: network first, fallback to cache
 self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
+  // Skip non-GET and chrome-extension requests
+  if (event.request.method !== 'GET') return;
+  if (event.request.url.startsWith('chrome-extension')) return;
 
-  // Gemini API calls — network only, no cache
-  if (url.hostname.includes('googleapis.com') || url.hostname.includes('generativelanguage')) {
-    event.respondWith(fetch(event.request));
-    return;
-  }
-
-  // Google Fonts — network first, fallback to cache
-  if (url.hostname.includes('fonts.googleapis.com') || url.hostname.includes('fonts.gstatic.com')) {
-    event.respondWith(
-      fetch(event.request)
-        .then(response => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-          return response;
-        })
-        .catch(() => caches.match(event.request))
-    );
-    return;
-  }
-
-  // App shell — cache first, fallback to network
   event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) return cached;
-      return fetch(event.request).then(response => {
-        // Cache valid GET responses
-        if (event.request.method === 'GET' && response.status === 200) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-        }
+    fetch(event.request)
+      .then(response => {
+        // Clone and cache the new response
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
         return response;
-      }).catch(() => {
-        // Offline fallback — return index.html for navigation requests
-        if (event.request.mode === 'navigate') {
-          return caches.match('./index.html');
-        }
-      });
-    })
+      })
+      .catch(() => caches.match(event.request))
   );
-});
-
-// ── MESSAGE — force update from app ─────────────────
-self.addEventListener('message', event => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
 });
