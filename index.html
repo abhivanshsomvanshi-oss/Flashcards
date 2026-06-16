@@ -1741,39 +1741,60 @@ Return ONLY valid JSON array, zero markdown:
 
 Target: 50-80 cards. No generic questions.`;
 
+  const MODELS=['gemini-2.5-flash','gemini-2.0-flash','gemini-2.5-flash-lite'];
+
   async function callGemini(retries=3){
-    for(let attempt=1;attempt<=retries;attempt++){
-      try{
-        const res=await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-          {method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({
-            contents:[{parts:[
-              {inline_data:{mime_type:imageType,data:imageBase64}},
-              {text:prompt}
-            ]}],
-            generationConfig:{temperature:0.1,maxOutputTokens:8192,thinkingConfig:{thinkingBudget:0}}
-          })}
-        );
-        const data=await res.json();
-        if(data.error){
-          const msg=data.error.message||'';
-          const isRetryable=msg.includes('high demand')||msg.includes('503')||msg.includes('overloaded');
-          if(isRetryable && attempt<retries){
-            const wait=attempt*8000;
+    for(let mi=0;mi<MODELS.length;mi++){
+      const model=MODELS[mi];
+      for(let attempt=1;attempt<=retries;attempt++){
+        try{
+          const res=await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+            {method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+              contents:[{parts:[
+                {inline_data:{mime_type:imageType,data:imageBase64}},
+                {text:prompt}
+              ]}],
+              generationConfig:{temperature:0.1,maxOutputTokens:8192,thinkingConfig:{thinkingBudget:0}}
+            })}
+          );
+          const data=await res.json();
+          if(data.error){
+            const msg=data.error.message||'';
+            const status=data.error.status||'';
+            const isQuota=status==='RESOURCE_EXHAUSTED'||msg.includes('quota')||msg.includes('429');
+            const isOverload=msg.includes('high demand')||msg.includes('503')||msg.includes('overloaded');
             const lp=document.getElementById('loading-msg');
-            if(lp) lp.textContent=`Server busy — ${attempt}/${retries} retry (${wait/1000}s wait)...`;
-            await new Promise(r=>setTimeout(r,wait));
-            continue;
+
+            if(isQuota){
+              // quota khatam — turant doosra model try karo, retry mat karo isi model pe
+              if(mi<MODELS.length-1){
+                if(lp) lp.textContent=`${model} quota khatam — ${MODELS[mi+1]} try kar rahe hain...`;
+                await new Promise(r=>setTimeout(r,1500));
+                break; // next model
+              }
+              throw new Error('Saare models ki free quota khatam ho gayi hai. Kuch der (1-2 min) wait karo ya naya API key try karo.');
+            }
+
+            if(isOverload && attempt<retries){
+              const wait=attempt*8000;
+              if(lp) lp.textContent=`Server busy — ${attempt}/${retries} retry (${wait/1000}s wait)...`;
+              await new Promise(r=>setTimeout(r,wait));
+              continue;
+            }
+            throw new Error(msg||'Unknown API error');
           }
-          throw new Error(data.error.message);
+          return data;
+        }catch(e){
+          if(e.message&&e.message.includes('Saare models')) throw e;
+          if(attempt===retries && mi===MODELS.length-1) throw e;
+          if(attempt===retries) break; // try next model
+          await new Promise(r=>setTimeout(r,attempt*8000));
         }
-        return data;
-      }catch(e){
-        if(attempt===retries) throw e;
-        await new Promise(r=>setTimeout(r,attempt*8000));
       }
     }
+    throw new Error('Sabhi models fail ho gaye. Thodi der baad try karo.');
   }
 
   try{
