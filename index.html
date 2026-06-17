@@ -264,6 +264,19 @@ body{padding-bottom:80px;}
 .modal-cancel{padding:13px 18px;background:rgba(255,255,255,.04);color:var(--dim);border:1px solid var(--border);border-radius:12px;font-family:var(--font-body);font-size:.9rem;cursor:pointer;}
 .modal-delete{padding:13px 16px;background:rgba(255,101,132,.1);color:var(--red);border:1px solid rgba(255,101,132,.2);border-radius:12px;font-family:var(--font-body);font-size:.9rem;cursor:pointer;}
 
+/* MULTI-SELECT SUBJECT PICKER (add subjects to folder) */
+.fsp-list{max-height:50vh;overflow-y:auto;margin-bottom:6px;}
+.fsp-item{display:flex;align-items:center;gap:12px;padding:12px 10px;border-radius:14px;cursor:pointer;transition:background .15s;margin-bottom:6px;border:1px solid transparent;}
+.fsp-item.checked{background:rgba(108,99,255,.1);border-color:rgba(108,99,255,.3);}
+.fsp-checkbox{width:22px;height:22px;border-radius:7px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.8rem;color:#fff;transition:all .15s;}
+.fsp-item.checked .fsp-checkbox{background:linear-gradient(135deg,#6c63ff,#8b5cf6);border-color:transparent;}
+.fsp-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.05rem;flex-shrink:0;}
+.fsp-info{flex:1;min-width:0;}
+.fsp-name{font-size:.88rem;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fsp-meta{font-size:.7rem;color:var(--dim);margin-top:1px;}
+.fsp-empty{text-align:center;padding:30px 10px;color:var(--dim);font-size:.85rem;}
+.fsp-count{font-size:.78rem;color:var(--dim);margin-bottom:14px;}
+
 /* LONG PRESS MENU */
 .lp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:900;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(6px);}
 .lp-overlay.open{display:flex;}
@@ -452,6 +465,20 @@ body{padding-bottom:80px;}
       <button class="modal-cancel" onclick="closeEditModal()">Cancel</button>
       <button class="modal-delete" onclick="deleteCardFromEdit()">🗑 Delete</button>
       <button class="modal-save" onclick="saveEditedCard()">💾 Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD SUBJECTS TO FOLDER (MULTI-SELECT) MODAL -->
+<div class="modal-overlay" id="fsp-modal-overlay" onclick="closeFolderSubjectPicker(event)">
+  <div class="edit-modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">➕ Subjects Add Karo</div>
+    <div class="fsp-count" id="fsp-count">0 selected</div>
+    <div class="fsp-list" id="fsp-list"></div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeFolderSubjectPicker()">Cancel</button>
+      <button class="modal-save" onclick="confirmAddSubjectsToFolder()">💾 Add Karo</button>
     </div>
   </div>
 </div>
@@ -836,19 +863,80 @@ function removeFolderSubject(fk, sk){
   renderHome();
 }
 
+let fspFolderKey = null;
+let fspSelected = new Set();
+
 function addSubjectToFolder(folderKey){
   const subjects = getSubjects();
   const folders  = getFolders();
   const alreadyIn = folders[folderKey]?.subjectKeys||[];
   const available = Object.keys(subjects).filter(k => !alreadyIn.includes(k));
-  if(!available.length){ alert('Koi naya subject nahi available!'); return; }
-  const opts = available.map((k,i) => `${i+1}. ${subjects[k].emoji} ${subjects[k].name}`).join('\n');
-  const choice = prompt(`Kaunsa subject add karna hai?\n\n${opts}\n\nNumber daalo:`);
-  if(!choice) return;
-  const idx = parseInt(choice)-1;
-  if(isNaN(idx)||idx<0||idx>=available.length){ alert('Invalid!'); return; }
-  folders[folderKey].subjectKeys.push(available[idx]);
+
+  fspFolderKey = folderKey;
+  fspSelected = new Set();
+
+  const listEl = document.getElementById('fsp-list');
+  if(!available.length){
+    listEl.innerHTML = `<div class="fsp-empty">Koi naya subject nahi available!<br/>Saare subjects already isme add hain.</div>`;
+  } else {
+    listEl.innerHTML = available.map(k => {
+      const s = subjects[k];
+      return `<div class="fsp-item" id="fsp-item-${k}" onclick="toggleFspItem('${k}')">
+        <div class="fsp-checkbox" id="fsp-check-${k}"></div>
+        <div class="fsp-icon ${s.color}">${s.emoji}</div>
+        <div class="fsp-info">
+          <div class="fsp-name">${escapeHtml(s.name)}</div>
+          <div class="fsp-meta">${s.cards.length} cards</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  updateFspCount();
+  document.getElementById('fsp-modal-overlay').classList.add('open');
+}
+
+function toggleFspItem(key){
+  const item = document.getElementById(`fsp-item-${key}`);
+  const check = document.getElementById(`fsp-check-${key}`);
+  if(fspSelected.has(key)){
+    fspSelected.delete(key);
+    item.classList.remove('checked');
+    check.textContent='';
+  } else {
+    fspSelected.add(key);
+    item.classList.add('checked');
+    check.textContent='✓';
+  }
+  updateFspCount();
+}
+
+function updateFspCount(){
+  const el = document.getElementById('fsp-count');
+  if(el) el.textContent = `${fspSelected.size} selected`;
+}
+
+function closeFolderSubjectPicker(e){
+  if(e && e.target!==document.getElementById('fsp-modal-overlay')) return;
+  document.getElementById('fsp-modal-overlay').classList.remove('open');
+  fspFolderKey = null;
+  fspSelected = new Set();
+}
+
+function confirmAddSubjectsToFolder(){
+  if(!fspFolderKey || fspSelected.size===0){
+    document.getElementById('fsp-modal-overlay').classList.remove('open');
+    fspFolderKey = null; fspSelected = new Set();
+    return;
+  }
+  const folders = getFolders();
+  if(!folders[fspFolderKey]){ closeFolderSubjectPicker(); return; }
+  fspSelected.forEach(k => {
+    if(!folders[fspFolderKey].subjectKeys.includes(k)) folders[fspFolderKey].subjectKeys.push(k);
+  });
   saveFolders(folders);
+  fspFolderKey = null;
+  fspSelected = new Set();
+  document.getElementById('fsp-modal-overlay').classList.remove('open');
   renderHome();
 }
 
@@ -956,9 +1044,9 @@ function buildDeckDOM(){
   const starred = getStarred();
 
   let html = `<div class="swipe-hint">
-    <span class="hint-txt">← Skip</span>
+    <span class="hint-txt">← Previous</span>
     <span class="card-counter">${deckIdx+1} / ${deckCards.length}</span>
-    <span class="hint-txt">Skip →</span>
+    <span class="hint-txt">Next →</span>
   </div>
   <div class="swipe-deck-wrap" id="swipe-wrap">`;
 
@@ -986,7 +1074,7 @@ function buildDeckDOM(){
     }
 
     html += `<div class="swipe-card ${stackClass}" id="sc-${i}">
-      <div class="swipe-nope" id="nope-${i}">SKIP</div>
+      <div class="swipe-nope" id="nope-${i}">PREV</div>
       <div class="swipe-good" id="good-${i}">NEXT</div>
       ${imgZone}
       <div class="sc-body">${badge}<div class="sc-question">${escapeHtml(card.question)}</div></div>
@@ -1098,8 +1186,20 @@ function setupSwipe(idx){
     if(!dragging) return; dragging=false; card.classList.remove('is-dragging');
     const dx=curX-startX;
     if(Math.abs(dx)>90){
-      card.classList.add(dx>0?'fly-right':'fly-left');
-      setTimeout(()=>{ deckIdx++; deckAnswerShown=false; buildDeckDOM(); }, 350);
+      if(dx>0){
+        // Right swipe — next card
+        card.classList.add('fly-right');
+        setTimeout(()=>{ deckIdx++; deckAnswerShown=false; buildDeckDOM(); }, 350);
+      } else {
+        // Left swipe — previous card (only if not at the first card)
+        if(deckIdx>0){
+          card.classList.add('fly-left');
+          setTimeout(()=>{ deckIdx--; deckAnswerShown=false; buildDeckDOM(); }, 350);
+        } else {
+          card.classList.add('reset'); card.style.transform='';
+          setTimeout(()=>card.classList.remove('reset'), 300);
+        }
+      }
     } else {
       card.classList.add('reset'); card.style.transform='';
       const n=document.getElementById(`nope-${idx}`), g=document.getElementById(`good-${idx}`);
