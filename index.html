@@ -179,6 +179,9 @@ body{padding-bottom:80px;}
 .swipe-nope{position:absolute;top:18px;left:18px;background:rgba(255,101,132,.2);border:2px solid var(--red);border-radius:10px;padding:5px 12px;font-size:.82rem;font-weight:800;color:var(--red);opacity:0;z-index:20;transform:rotate(-15deg);letter-spacing:1px;}
 .swipe-good{position:absolute;top:18px;right:18px;background:rgba(67,233,123,.2);border:2px solid var(--green);border-radius:10px;padding:5px 12px;font-size:.82rem;font-weight:800;color:var(--green);opacity:0;z-index:20;transform:rotate(15deg);letter-spacing:1px;}
 .swipe-hint{display:flex;align-items:center;justify-content:space-between;padding:0 4px;margin-bottom:8px;}
+.qadd-btn{width:30px;height:30px;border-radius:9px;background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.3);color:#c4b5fd;font-size:1rem;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
+.qadd-modal-body{margin-top:6px;}
+.qadd-type-row{display:flex;gap:8px;margin-bottom:14px;}
 .hint-txt{font-size:.65rem;color:var(--faint);}
 .card-counter{font-size:.8rem;color:var(--dim);font-weight:600;background:rgba(255,255,255,.05);padding:4px 12px;border-radius:20px;border:1px solid var(--border);}
 
@@ -479,6 +482,28 @@ body{padding-bottom:80px;}
     <div class="modal-actions">
       <button class="modal-cancel" onclick="closeFolderSubjectPicker()">Cancel</button>
       <button class="modal-save" onclick="confirmAddSubjectsToFolder()">💾 Add Karo</button>
+    </div>
+  </div>
+</div>
+
+<!-- QUICK ADD CARD (MID-DECK) MODAL -->
+<div class="modal-overlay" id="qadd-modal-overlay" onclick="closeQuickAddCard(event)">
+  <div class="edit-modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">➕ Naya Card Add Karo</div>
+    <div class="qadd-modal-body">
+      <div class="qadd-type-row">
+        <div class="type-chip active" id="qtype-fact" onclick="setQuickAddType('fact')">📋 Fact</div>
+        <div class="type-chip" id="qtype-concept" onclick="setQuickAddType('concept')">💡 Concept</div>
+        <div class="type-chip" id="qtype-image" onclick="setQuickAddType('image')">🖼️ Image</div>
+      </div>
+      <textarea class="textarea-inp" id="qadd-q" rows="3" placeholder="Question likho..." maxlength="150"></textarea>
+      <input class="inp" id="qadd-a" placeholder="Answer likho..." maxlength="60" style="margin-top:10px;"/>
+      <div id="qadd-error" class="error-box" style="display:none;margin-top:10px;"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeQuickAddCard()">Cancel</button>
+      <button class="modal-save" onclick="confirmQuickAddCard()">💾 Add Karo</button>
     </div>
   </div>
 </div>
@@ -789,6 +814,7 @@ function renderHome(){
           <div class="folder-name">${escapeHtml(f.name)}</div>
           <div class="folder-meta">${validSubjectKeys.length} subjects · ${totalCards} cards</div>
         </div>
+        <button onclick="event.stopPropagation();openRenameFolder('${fk}')" style="background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.25);border-radius:10px;padding:7px 10px;color:#c4b5fd;font-size:.75rem;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;flex-shrink:0;margin-right:6px;">✏️</button>
         <button onclick="event.stopPropagation();if(confirm('Folder delete ho jayega?')){const f=getFolders();delete f['${fk}'];saveFolders(f);renderHome();}" style="background:rgba(255,101,132,.12);border:1px solid rgba(255,101,132,.25);border-radius:10px;padding:7px 12px;color:#fda4af;font-size:.75rem;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;flex-shrink:0;">🗑</button>
         <div class="folder-chevron ${f.open?'open':''}">›</div>
       </div>
@@ -803,6 +829,7 @@ function renderHome(){
               <div class="fsi-name">${escapeHtml(s.name)}</div>
               <div class="fsi-meta">${s.cards.length} cards${pct!==null?' · '+pct+'% accuracy':''}</div>
             </div>
+            <button onclick="event.stopPropagation();openRenameSubject('${sk}')" style="background:none;border:none;color:var(--faint);padding:6px;cursor:pointer;">✏️</button>
             <button onclick="event.stopPropagation();removeFolderSubject('${fk}','${sk}')" style="background:none;border:none;color:var(--faint);padding:6px;cursor:pointer;">✕</button>
             <span style="color:var(--dim)">›</span>
           </div>`;
@@ -828,6 +855,7 @@ function renderHome(){
           <div class="s-meta">${s.cards.length} cards · ${s.date}</div>
           ${scoreHtml}
         </div>
+        <button onclick="event.stopPropagation();openRenameSubject('${k}')" style="background:none;border:none;color:var(--faint);padding:6px;cursor:pointer;font-size:.9rem;">✏️</button>
         <span style="font-size:.65rem;color:var(--faint);">Hold to del</span>
       </div>`;
     }).join('');
@@ -859,6 +887,45 @@ function toggleFolder(key){
 function removeFolderSubject(fk, sk){
   const folders = getFolders();
   if(folders[fk]) folders[fk].subjectKeys = folders[fk].subjectKeys.filter(k => k !== sk);
+  saveFolders(folders);
+  renderHome();
+}
+
+function openRenameFolder(fk){
+  const folders = getFolders();
+  const f = folders[fk];
+  if(!f) return;
+  const newName = prompt('Folder ka naya naam daalo:', f.name);
+  if(newName===null) return; // cancelled
+  const trimmed = newName.trim();
+  if(!trimmed){ alert('Naam khali nahi ho sakta!'); return; }
+  f.name = trimmed;
+  saveFolders(folders);
+  renderHome();
+}
+
+function openRenameSubject(sk){
+  const subjects = getSubjects();
+  const s = subjects[sk];
+  if(!s) return;
+  const newName = prompt('Subject ka naya naam daalo:', s.name);
+  if(newName===null) return; // cancelled
+  const trimmed = newName.trim();
+  if(!trimmed){ alert('Naam khali nahi ho sakta!'); return; }
+  s.name = trimmed;
+  saveSubjectsData(subjects);
+
+  // Subject ka naam change hua to folder ke andar subject-order ko bhi re-sort karo
+  const folders = getFolders();
+  Object.keys(folders).forEach(fk => {
+    if((folders[fk].subjectKeys||[]).includes(sk)){
+      folders[fk].subjectKeys.sort((a,b) => {
+        const na = subjects[a]?.name || '';
+        const nb = subjects[b]?.name || '';
+        return na.localeCompare(nb, undefined, {sensitivity:'base'});
+      });
+    }
+  });
   saveFolders(folders);
   renderHome();
 }
@@ -933,11 +1000,74 @@ function confirmAddSubjectsToFolder(){
   fspSelected.forEach(k => {
     if(!folders[fspFolderKey].subjectKeys.includes(k)) folders[fspFolderKey].subjectKeys.push(k);
   });
+  // Alphabetical order se sort karo (subject name ke hisaab se)
+  const subjectsAll = getSubjects();
+  folders[fspFolderKey].subjectKeys.sort((a,b) => {
+    const na = subjectsAll[a]?.name || '';
+    const nb = subjectsAll[b]?.name || '';
+    return na.localeCompare(nb, undefined, {sensitivity:'base'});
+  });
   saveFolders(folders);
   fspFolderKey = null;
   fspSelected = new Set();
   document.getElementById('fsp-modal-overlay').classList.remove('open');
   renderHome();
+}
+
+/* ===== QUICK ADD CARD (MID-DECK) ===== */
+let quickAddType = 'fact';
+
+function setQuickAddType(type){
+  quickAddType = type;
+  ['fact','concept','image'].forEach(t=>{
+    const el = document.getElementById(`qtype-${t}`);
+    if(el) el.classList.toggle('active', t===type);
+  });
+}
+
+function openQuickAddCard(){
+  if(deckType==='smart' || deckSubjectKey==='__starred__' || !deckSubjectKey){
+    alert('Ye feature sirf normal subject deck mein available hai.');
+    return;
+  }
+  quickAddType = 'fact';
+  setQuickAddType('fact');
+  document.getElementById('qadd-q').value='';
+  document.getElementById('qadd-a').value='';
+  document.getElementById('qadd-error').style.display='none';
+  document.getElementById('qadd-modal-overlay').classList.add('open');
+}
+
+function closeQuickAddCard(e){
+  if(e && e.target!==document.getElementById('qadd-modal-overlay')) return;
+  document.getElementById('qadd-modal-overlay').classList.remove('open');
+}
+
+function confirmQuickAddCard(){
+  const q = document.getElementById('qadd-q').value.trim();
+  const a = document.getElementById('qadd-a').value.trim();
+  const errEl = document.getElementById('qadd-error');
+  if(!q || !a){
+    errEl.textContent = 'Question aur Answer dono likhna zaroori hai.';
+    errEl.style.display='block';
+    return;
+  }
+
+  const newCard = {question:q, answer:a, type:quickAddType, manual:true};
+
+  // Subject ke permanent storage mein add karo
+  const subjects = getSubjects();
+  const s = subjects[deckSubjectKey];
+  if(s){
+    s.cards.push(newCard);
+    saveSubjectsData(subjects);
+  }
+
+  // Current chal rahe deck mein bhi turant insert karo (current card ke just baad)
+  deckCards.splice(deckIdx+1, 0, newCard);
+
+  document.getElementById('qadd-modal-overlay').classList.remove('open');
+  buildDeckDOM();
 }
 
 // ── OPEN SUBJECT ──────────────────────────────────────
@@ -1045,6 +1175,7 @@ function buildDeckDOM(){
 
   let html = `<div class="swipe-hint">
     <span class="hint-txt">← Previous</span>
+    <button class="qadd-btn" onclick="openQuickAddCard()" title="Card add karo">➕</button>
     <span class="card-counter">${deckIdx+1} / ${deckCards.length}</span>
     <span class="hint-txt">Next →</span>
   </div>
