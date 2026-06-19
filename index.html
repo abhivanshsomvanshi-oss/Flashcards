@@ -129,8 +129,8 @@ body{padding-bottom:80px;}
 .tab-btn.active{background:linear-gradient(135deg,rgba(108,99,255,.3),rgba(108,99,255,.15));color:#c4b5fd;}
 
 /* ── SWIPE DECK ── */
-.swipe-deck-wrap{position:relative;width:100%;height:calc(100vh - 230px);min-height:420px;max-height:640px;margin-bottom:14px;touch-action:none;}
-body.deck-locked{overflow:hidden;position:fixed;width:100%;}
+.swipe-deck-wrap{position:relative;width:100%;height:calc(100vh - 140px);min-height:460px;max-height:720px;margin-bottom:14px;touch-action:none;}
+body.deck-locked{overflow:hidden;}
 .swipe-card{position:absolute;inset:0;background:linear-gradient(145deg,#0e0f20,#090a16);border:1px solid rgba(108,99,255,.2);border-radius:24px;overflow:hidden;cursor:grab;user-select:none;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.4);}
 .swipe-card:active{cursor:grabbing;}
 .swipe-card.is-dragging{transition:none;}
@@ -402,7 +402,10 @@ body.deck-locked{overflow:hidden;position:fixed;width:100%;}
 
 <!-- DETAIL -->
 <div class="screen" id="screen-detail">
-  <button class="back-btn" onclick="goBack()">← Wapas Jao</button>
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
+    <button class="back-btn" onclick="goBack()" style="margin-bottom:0;">← Wapas Jao</button>
+    <button onclick="showScreen('add')" style="background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.25);border-radius:12px;padding:9px 12px;color:#c4b5fd;font-size:.72rem;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;white-space:nowrap;flex-shrink:0;">➕ Screenshot</button>
+  </div>
   <div id="detail-content"></div>
 </div>
 
@@ -1100,34 +1103,7 @@ function openSubject(key){
 // ═══════════════════════════════════════════════════
 function renderDetail(key){
   const s = getSubjects()[key]; if(!s) return;
-  const sc = getAllScores()[key]||{correct:0,wrong:0,wrongCards:[]};
-  const total = s.cards.length;
-  const pct = sc.correct+sc.wrong > 0 ? Math.round(sc.correct/(sc.correct+sc.wrong)*100) : 0;
-
-  let html = `
-    <div class="d-name">${s.emoji} ${escapeHtml(s.name)}</div>
-    <div class="d-meta">Created ${s.date}</div>
-    <div class="stats-row">
-      <div class="stat-box"><div class="stat-n def">${total}</div><div class="stat-l">Total</div></div>
-      <div class="stat-box"><div class="stat-n green">${sc.correct}</div><div class="stat-l">✓ Sahi</div></div>
-      <div class="stat-box"><div class="stat-n red">${sc.wrong}</div><div class="stat-l">✗ Galat</div></div>
-    </div>`;
-
-  if(sc.correct+sc.wrong > 0){
-    html += `<div class="score-bar-wrap">
-      <div class="score-bar-top"><span>Accuracy</span><span>${pct}%</span></div>
-      <div class="score-bar"><div class="score-bar-fill" style="width:${pct}%"></div></div>
-    </div>`;
-  }
-
-  html += `<div class="tab-row">
-    <button class="tab-btn active" id="tab-all"    onclick="switchTab('all','${key}')">📋 All (${total})</button>
-    <button class="tab-btn"         id="tab-images" onclick="switchTab('images','${key}')">🖼️ Img (${s.cards.filter(c=>c.type==='image').length})</button>
-    <button class="tab-btn"         id="tab-wrong"  onclick="switchTab('wrong','${key}')">✗ Wrong (${sc.wrongCards?sc.wrongCards.length:0})</button>
-  </div>
-  <div id="deck-container"></div>
-  <button class="add-more-btn" onclick="showScreen('add')">➕ Aur screenshots add karo</button>`;
-
+  let html = `<div id="deck-container"></div>`;
   document.getElementById('detail-content').innerHTML = html;
   renderDeck(s.cards, s.screenshotData, 'all', key);
 }
@@ -1145,11 +1121,12 @@ function switchTab(tab, key){
 
 function showWrongCardsReview(wrongCards, key){
   const container = document.getElementById('deck-container');
+  const backBtn = `<button onclick="renderDetail('${key}')" style="background:rgba(108,99,255,.12);border:1px solid rgba(108,99,255,.25);border-radius:12px;padding:9px 14px;color:#c4b5fd;font-size:.78rem;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;margin-bottom:14px;">← Cards pe wapas jao</button>`;
   if(!wrongCards.length){
-    container.innerHTML = `<div class="deck-done"><div class="big-emoji">🎉</div><h3>Koi galat card nahi!</h3><p style="color:var(--dim)">Great job! Sab sahi ho gaye.</p></div>`;
+    container.innerHTML = backBtn + `<div class="deck-done"><div class="big-emoji">🎉</div><h3>Koi galat card nahi!</h3><p style="color:var(--dim)">Great job! Sab sahi ho gaye.</p></div>`;
     return;
   }
-  let html = `<div style="margin-bottom:14px">
+  let html = backBtn + `<div style="margin-bottom:14px">
     <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--dim);margin-bottom:10px">✗ Galat Cards (${wrongCards.length})</div>`;
   wrongCards.forEach((card,i) => {
     html += `<div class="wrong-card">
@@ -1189,9 +1166,14 @@ function buildDeckDOM(){
 
   const starred = getStarred();
 
+  const sc = (deckSubjectKey && deckSubjectKey!=='__smart__' && deckSubjectKey!=='__starred__') ? (getAllScores()[deckSubjectKey]||{wrongCards:[]}) : {wrongCards:[]};
+  const wrongBtn = (sc.wrongCards && sc.wrongCards.length)
+    ? `<button class="qadd-btn" onclick="showWrongCardsReview(getAllScores()['${deckSubjectKey}']?.wrongCards||[], '${deckSubjectKey}')" title="Galat cards dekho" style="margin-left:6px;">✗</button>`
+    : '';
+
   let html = `<div class="swipe-hint">
     <span class="hint-txt">← Previous</span>
-    <button class="qadd-btn" onclick="openQuickAddCard()" title="Card add karo">➕</button>
+    <button class="qadd-btn" onclick="openQuickAddCard()" title="Card add karo">➕</button>${wrongBtn}
     <span class="card-counter">${deckIdx+1} / ${deckCards.length}</span>
     <span class="hint-txt">Next →</span>
   </div>
