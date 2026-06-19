@@ -129,7 +129,8 @@ body{padding-bottom:80px;}
 .tab-btn.active{background:linear-gradient(135deg,rgba(108,99,255,.3),rgba(108,99,255,.15));color:#c4b5fd;}
 
 /* ── SWIPE DECK ── */
-.swipe-deck-wrap{position:relative;width:100%;height:560px;margin-bottom:14px;touch-action:none;}
+.swipe-deck-wrap{position:relative;width:100%;height:calc(100vh - 230px);min-height:420px;max-height:640px;margin-bottom:14px;touch-action:none;}
+body.deck-locked{overflow:hidden;position:fixed;width:100%;}
 .swipe-card{position:absolute;inset:0;background:linear-gradient(145deg,#0e0f20,#090a16);border:1px solid rgba(108,99,255,.2);border-radius:24px;overflow:hidden;cursor:grab;user-select:none;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.4);}
 .swipe-card:active{cursor:grabbing;}
 .swipe-card.is-dragging{transition:none;}
@@ -761,6 +762,7 @@ function showScreen(name){
   if(screenEl) screenEl.classList.add('active');
   const navEl = document.getElementById('nav-' + name);
   if(navEl) navEl.classList.add('active');
+  document.body.classList.remove('deck-locked');
   if(name === 'home') renderHome();
   if(name === 'add') resetAdd();
   if(name === 'api'){ const sv = getApiKey(); if(sv) document.getElementById('api-key-input').value = sv; renderDailyStats(); }
@@ -936,15 +938,20 @@ let fspSelected = new Set();
 function addSubjectToFolder(folderKey){
   const subjects = getSubjects();
   const folders  = getFolders();
-  const alreadyIn = folders[folderKey]?.subjectKeys||[];
-  const available = Object.keys(subjects).filter(k => !alreadyIn.includes(k));
+
+  // Saare folders mein jo bhi subjects already filed hain, unhe exclude karo
+  // (sirf current folder ke nahi — kyunki ek subject sirf ek hi folder mein fix rahega)
+  const allFiledSubjects = new Set(
+    Object.keys(folders).flatMap(fk => folders[fk].subjectKeys || [])
+  );
+  const available = Object.keys(subjects).filter(k => !allFiledSubjects.has(k));
 
   fspFolderKey = folderKey;
   fspSelected = new Set();
 
   const listEl = document.getElementById('fsp-list');
   if(!available.length){
-    listEl.innerHTML = `<div class="fsp-empty">Koi naya subject nahi available!<br/>Saare subjects already isme add hain.</div>`;
+    listEl.innerHTML = `<div class="fsp-empty">Koi naya subject nahi available!<br/>Saare subjects already kisi folder mein add hain.</div>`;
   } else {
     listEl.innerHTML = available.map(k => {
       const s = subjects[k];
@@ -1055,16 +1062,22 @@ function confirmQuickAddCard(){
 
   const newCard = {question:q, answer:a, type:quickAddType, manual:true};
 
-  // Subject ke permanent storage mein add karo
   const subjects = getSubjects();
   const s = subjects[deckSubjectKey];
-  if(s){
+
+  // deckCards normal subject deck mein s.cards ka hi reference hota hai (same array),
+  // isliye sirf deckCards mein insert karo. Agar reference alag hai (jaise smart/starred deck)
+  // tabhi s.cards mein bhi alag se push karo, taaki duplicate na bane.
+  const isSameArray = s && (deckCards === s.cards);
+
+  deckCards.splice(deckIdx+1, 0, newCard);
+
+  if(s && !isSameArray){
     s.cards.push(newCard);
+  }
+  if(s){
     saveSubjectsData(subjects);
   }
-
-  // Current chal rahe deck mein bhi turant insert karo (current card ke just baad)
-  deckCards.splice(deckIdx+1, 0, newCard);
 
   document.getElementById('qadd-modal-overlay').classList.remove('open');
   buildDeckDOM();
@@ -1079,6 +1092,7 @@ function openSubject(key){
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   renderDetail(key);
   document.getElementById('screen-detail').classList.add('active');
+  document.body.classList.add('deck-locked');
 }
 
 // ═══════════════════════════════════════════════════
@@ -1164,8 +1178,10 @@ function renderDeck(cards, screenshotData, type, subjectKey){
 function buildDeckDOM(){
   const container = document.getElementById('deck-container');
   if(!container) return;
+  document.body.classList.add('deck-locked');
 
   if(!deckCards.length){
+    document.body.classList.remove('deck-locked');
     container.innerHTML = `<div class="deck-done"><div class="big-emoji">📭</div><h3>Koi card nahi</h3></div>`;
     return;
   }
@@ -1398,6 +1414,7 @@ function updateCardWrongCount(card, delta){
 // DECK RESULTS + DAILY STATS (Feature 7)
 // ═══════════════════════════════════════════════════
 function showDeckResults(){
+  document.body.classList.remove('deck-locked');
   // Save scores
   if(deckSubjectKey && deckSubjectKey !== '__smart__' && deckSubjectKey !== '__starred__'){
     const scores = getAllScores();
@@ -1937,23 +1954,23 @@ async function generateFlashcards(){
 
   const prompt=`You are an expert medical flashcard generator for Indian PG exams (NEET PG, AIIMS, USMLE).
 
-Extract EVERY SINGLE testable fact. Target: 50-80 cards minimum.
+Your job: extract ONLY the facts that are ACTUALLY WRITTEN in this screenshot. Do NOT add outside knowledge, do NOT add extra facts that aren't visible in the image, and do NOT pad the count with generic or invented questions.
 
-MANDATORY COVERAGE:
-- Every structure: nerve supply, blood supply, insertion/origin, function
-- Every classification with ALL entries
-- Every table row (each row = separate card)
-- Every bullet point (each bullet = separate card)
-- Every number, percentage, age, duration
-- Every drug: mechanism, dose, indication
-- Every eponym with what it means
-- Every mnemonic with expansion
+COVERAGE RULES:
+- Cover EVERY testable fact that is explicitly present in the image: every structure, every classification entry, every table row, every bullet point, every number/percentage/age/duration, every drug detail, every eponym, every mnemonic — but ONLY if it is actually written in the image.
+- If the image has little content, generate few cards. If it has a lot of content, generate more cards. The number of cards must match the actual amount of content in the image — there is NO fixed minimum or target count.
+- Do NOT invent facts, examples, or extra detail that isn't shown in the screenshot.
+
+NO DUPLICATES:
+- Each question must be unique. Do NOT create two cards that ask the same thing in different words.
+- Before finalizing, check your list mentally and remove any repeated or near-duplicate questions.
 
 STRICTLY FORBIDDEN:
 - "What is the main topic?" or vague questions
 - NEVER put the answer word inside the question!
   BAD: "What vessel is labeled 'Left hepatic vein'?"
   GOOD: "Which vein drains the left lobe of liver?"
+- Do NOT repeat the same fact as multiple cards
 
 GOOD question styles:
 - "Nerve supply of [structure]?"
@@ -1962,7 +1979,7 @@ GOOD question styles:
 - "Type of epiphysis of [bone]?"
 
 RULES:
-1. Read EVERY word: headings, bullets, tables, labels
+1. Read EVERY word in the image: headings, bullets, tables, labels — but only use what's actually there
 2. "answer": MAXIMUM 4 WORDS. Ultra-short.
 3. "type": "fact" | "concept" | "image"
 4. For "image" type: ask fact-based NEET-style questions about what is EXPLICITLY WRITTEN
@@ -1970,7 +1987,7 @@ RULES:
 Return ONLY valid JSON array, zero markdown:
 [{"question":"Nerve supply of subscapularis?","answer":"Lower subscapular n.","type":"fact"}]
 
-Target: 50-80 cards. No generic questions.`;
+Generate as many cards as the actual content supports — no more, no less. No generic questions. No duplicate questions.`;
 
   const MODELS=['gemini-2.5-flash','gemini-2.0-flash','gemini-2.5-flash-lite'];
 
@@ -2064,6 +2081,7 @@ Target: 50-80 cards. No generic questions.`;
     document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
     renderDetail(key);
     document.getElementById('screen-detail').classList.add('active');
+    document.body.classList.add('deck-locked');
   }catch(err){
     showScreen('add'); showError('Error: '+err.message);
   }
