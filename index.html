@@ -37,6 +37,9 @@ body{padding-bottom:80px;}
 
 /* HEADER */
 .header{position:relative;z-index:10;padding:52px 22px 14px;display:flex;align-items:flex-start;justify-content:space-between;}
+body.deck-mode .header{display:none;}
+body.deck-mode .screen#screen-detail{padding-top:52px;}
+body.deck-mode{overflow:hidden;}
 .logo{font-family:var(--font-head);font-size:2.1rem;font-weight:800;letter-spacing:-1.5px;background:linear-gradient(135deg,#fff 0%,#a78bfa 50%,#6c63ff 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
 .logo-sub{font-size:.7rem;color:var(--dim);margin-top:3px;letter-spacing:1px;text-transform:uppercase;}
 .gemini-badge{display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,rgba(108,99,255,.2),rgba(255,101,132,.15));border:1px solid rgba(108,99,255,.3);border-radius:20px;padding:5px 12px;font-size:.65rem;color:#c4b5fd;margin-top:8px;letter-spacing:.5px;}
@@ -130,7 +133,6 @@ body{padding-bottom:80px;}
 
 /* ── SWIPE DECK ── */
 .swipe-deck-wrap{position:relative;width:100%;height:calc(100vh - 240px);min-height:400px;max-height:650px;margin-bottom:14px;touch-action:none;}
-body.deck-locked{overflow:hidden;}
 .swipe-card{position:absolute;inset:0;background:linear-gradient(145deg,#0e0f20,#090a16);border:1px solid rgba(108,99,255,.2);border-radius:24px;overflow:hidden;cursor:grab;user-select:none;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.4);}
 .swipe-card:active{cursor:grabbing;}
 .swipe-card.is-dragging{transition:none;}
@@ -765,7 +767,7 @@ function showScreen(name){
   if(screenEl) screenEl.classList.add('active');
   const navEl = document.getElementById('nav-' + name);
   if(navEl) navEl.classList.add('active');
-  document.body.classList.remove('deck-locked');
+  document.body.classList.remove('deck-mode');
   if(name === 'home') renderHome();
   if(name === 'add') resetAdd();
   if(name === 'api'){ const sv = getApiKey(); if(sv) document.getElementById('api-key-input').value = sv; renderDailyStats(); }
@@ -1095,7 +1097,7 @@ function openSubject(key){
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   renderDetail(key);
   document.getElementById('screen-detail').classList.add('active');
-  document.body.classList.add('deck-locked');
+  document.body.classList.add('deck-mode');
 }
 
 // ═══════════════════════════════════════════════════
@@ -1155,10 +1157,8 @@ function renderDeck(cards, screenshotData, type, subjectKey){
 function buildDeckDOM(){
   const container = document.getElementById('deck-container');
   if(!container) return;
-  document.body.classList.add('deck-locked');
 
   if(!deckCards.length){
-    document.body.classList.remove('deck-locked');
     container.innerHTML = `<div class="deck-done"><div class="big-emoji">📭</div><h3>Koi card nahi</h3></div>`;
     return;
   }
@@ -1396,7 +1396,6 @@ function updateCardWrongCount(card, delta){
 // DECK RESULTS + DAILY STATS (Feature 7)
 // ═══════════════════════════════════════════════════
 function showDeckResults(){
-  document.body.classList.remove('deck-locked');
   // Save scores
   if(deckSubjectKey && deckSubjectKey !== '__smart__' && deckSubjectKey !== '__starred__'){
     const scores = getAllScores();
@@ -2063,7 +2062,6 @@ Generate as many cards as the actual content supports — no more, no less. No g
     document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
     renderDetail(key);
     document.getElementById('screen-detail').classList.add('active');
-    document.body.classList.add('deck-locked');
   }catch(err){
     showScreen('add'); showError('Error: '+err.message);
   }
