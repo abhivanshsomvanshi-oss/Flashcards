@@ -1396,6 +1396,7 @@ function updateCardWrongCount(card, delta){
 // DECK RESULTS + DAILY STATS (Feature 7)
 // ═══════════════════════════════════════════════════
 function showDeckResults(){
+  document.body.classList.remove('deck-mode');
   // Save scores
   if(deckSubjectKey && deckSubjectKey !== '__smart__' && deckSubjectKey !== '__starred__'){
     const scores = getAllScores();
@@ -1557,6 +1558,7 @@ function openStarredDeck(){
 
 // ── STARRED HOME — folder-grouped list ───────────────
 function renderStarredHome(){
+  document.body.classList.remove('deck-mode');
   const starred = getStarred();
 
   // Group by groupName (folder/subject)
@@ -1631,6 +1633,7 @@ function openStarredGroupDeck(groupName){
       <div class="stat-box"><div class="stat-n def">🎯</div><div class="stat-l">Focus</div></div>
     </div>
     <div id="deck-container"></div>`;
+  document.body.classList.add('deck-mode');
   buildDeckDOM();
 }
 
@@ -1655,6 +1658,7 @@ function openAllStarredDeck(){
       <div class="stat-box"><div class="stat-n def">🔀</div><div class="stat-l">Shuffled</div></div>
     </div>
     <div id="deck-container"></div>`;
+  document.body.classList.add('deck-mode');
   buildDeckDOM();
 }
 
@@ -2062,6 +2066,7 @@ Generate as many cards as the actual content supports — no more, no less. No g
     document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
     renderDetail(key);
     document.getElementById('screen-detail').classList.add('active');
+    document.body.classList.add('deck-mode');
   }catch(err){
     showScreen('add'); showError('Error: '+err.message);
   }
