@@ -1930,6 +1930,28 @@ function handleFile(file){
 
 function checkBtn(){ document.getElementById('generate-btn').disabled=!(document.getElementById('subject-name').value.trim() && imageBase64); }
 
+// Removes cards where the exact same question + exact same answer appears more than once
+function removeDuplicateCards(cards){
+  function normalize(str){
+    return (str||'')
+      .toLowerCase()
+      .replace(/[?.,!'"()-]/g,'')
+      .replace(/\s+/g,' ')
+      .trim();
+  }
+
+  const seen = new Set();
+  const result = [];
+
+  for(const card of cards){
+    const key = normalize(card.question) + '|' + normalize(card.answer);
+    if(seen.has(key)) continue;
+    seen.add(key);
+    result.push(card);
+  }
+  return result;
+}
+
 async function generateFlashcards(){
   const name=document.getElementById('subject-name').value.trim();
   const apiKey=getApiKey();
@@ -1946,9 +1968,11 @@ COVERAGE RULES:
 - If the image has little content, generate few cards. If it has a lot of content, generate more cards. The number of cards must match the actual amount of content in the image — there is NO fixed minimum or target count.
 - Do NOT invent facts, examples, or extra detail that isn't shown in the screenshot.
 
-NO DUPLICATES:
-- Each question must be unique. Do NOT create two cards that ask the same thing in different words.
-- Before finalizing, check your list mentally and remove any repeated or near-duplicate questions.
+NO DUPLICATES — VERY IMPORTANT:
+- Each fact in the image must produce EXACTLY ONE flashcard. Never ask about the same fact twice, even with different wording or phrasing.
+- Before writing each new question, mentally check: "Have I already asked about this exact fact/structure/value in a previous card?" If yes, SKIP it — do not create a near-duplicate.
+- Do not split one fact into multiple overlapping questions (e.g. don't ask "Liver substrate in fasting?" AND "What does liver use during fasting?" — pick ONE phrasing only).
+- After generating all cards, mentally re-scan the full list and delete any question that overlaps in meaning with an earlier one.
 
 STRICTLY FORBIDDEN:
 - "What is the main topic?" or vague questions
@@ -2050,6 +2074,9 @@ Generate as many cards as the actual content supports — no more, no less. No g
       const generic=['main topic','what does this image','what is shown here'].some(p=>q.includes(p));
       return !labeledMatch && !generic;
     });
+
+    // Duplicate / near-duplicate question removal (AI sometimes repeats the same fact)
+    cards = removeDuplicateCards(cards);
 
     const subjects=getSubjects();
     const idx=Object.keys(subjects).length;
