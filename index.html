@@ -1968,18 +1968,13 @@ COVERAGE RULES:
 - If the image has little content, generate few cards. If it has a lot of content, generate more cards. The number of cards must match the actual amount of content in the image — there is NO fixed minimum or target count.
 - Do NOT invent facts, examples, or extra detail that isn't shown in the screenshot.
 
-NO DUPLICATES — VERY IMPORTANT:
-- Each fact in the image must produce EXACTLY ONE flashcard. Never ask about the same fact twice, even with different wording or phrasing.
-- Before writing each new question, mentally check: "Have I already asked about this exact fact/structure/value in a previous card?" If yes, SKIP it — do not create a near-duplicate.
-- Do not split one fact into multiple overlapping questions (e.g. don't ask "Liver substrate in fasting?" AND "What does liver use during fasting?" — pick ONE phrasing only).
-- After generating all cards, mentally re-scan the full list and delete any question that overlaps in meaning with an earlier one.
+RULE FOR DUPLICATES: each distinct fact gets exactly one card. If the same fact is written twice in the image (e.g. repeated in a table and a note), only make one card for it. Do not ask the same thing twice with different wording.
 
 STRICTLY FORBIDDEN:
 - "What is the main topic?" or vague questions
 - NEVER put the answer word inside the question!
   BAD: "What vessel is labeled 'Left hepatic vein'?"
   GOOD: "Which vein drains the left lobe of liver?"
-- Do NOT repeat the same fact as multiple cards
 
 GOOD question styles:
 - "Nerve supply of [structure]?"
@@ -1988,7 +1983,7 @@ GOOD question styles:
 - "Type of epiphysis of [bone]?"
 
 RULES:
-1. Read EVERY word in the image: headings, bullets, tables, labels — but only use what's actually there
+1. Read EVERY word in the image: headings, bullets, tables, labels, side-notes, highlighted text — make sure NOTHING is left out
 2. "answer": MAXIMUM 4 WORDS. Ultra-short.
 3. "type": "fact" | "concept" | "image"
 4. For "image" type: ask fact-based NEET-style questions about what is EXPLICITLY WRITTEN
@@ -1996,7 +1991,7 @@ RULES:
 Return ONLY valid JSON array, zero markdown:
 [{"question":"Nerve supply of subscapularis?","answer":"Lower subscapular n.","type":"fact"}]
 
-Generate as many cards as the actual content supports — no more, no less. No generic questions. No duplicate questions.`;
+Cover every single fact in the image — don't skip anything. Just don't make two cards for the exact same fact.`;
 
   const MODELS=['gemini-2.5-flash','gemini-2.0-flash','gemini-2.5-flash-lite'];
 
