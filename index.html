@@ -268,6 +268,18 @@ body.deck-mode{overflow:hidden;}
 .modal-actions{display:flex;gap:10px;margin-top:18px;}
 .modal-save{flex:1;padding:13px;background:linear-gradient(135deg,#6c63ff,#8b5cf6);color:#fff;border:none;border-radius:12px;font-family:var(--font-body);font-size:.9rem;font-weight:700;cursor:pointer;}
 .modal-cancel{padding:13px 18px;background:rgba(255,255,255,.04);color:var(--dim);border:1px solid var(--border);border-radius:12px;font-family:var(--font-body);font-size:.9rem;cursor:pointer;}
+
+/* COMPARE SCREEN */
+.cmp-col-wrap{display:flex;flex-direction:column;gap:16px;}
+.cmp-col{background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:18px;padding:14px;}
+.cmp-col-header{display:flex;align-items:center;justify-content:space-between;font-size:.92rem;font-weight:700;color:#fff;margin-bottom:10px;}
+.cmp-count{font-size:.7rem;font-weight:600;color:var(--dim);background:rgba(255,255,255,.05);padding:3px 10px;border-radius:10px;}
+.cmp-preview{max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;}
+.cmp-card-mini{background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.05);border-radius:12px;padding:10px 12px;}
+.cmp-q{font-size:.78rem;color:var(--muted);margin-bottom:4px;line-height:1.4;}
+.cmp-a{font-size:.74rem;color:#a78bfa;font-weight:600;}
+.cmp-more{text-align:center;font-size:.72rem;color:var(--dim);padding:6px;}
+.cmp-empty{text-align:center;padding:24px 10px;color:var(--dim);font-size:.82rem;}
 .modal-delete{padding:13px 16px;background:rgba(255,101,132,.1);color:var(--red);border:1px solid rgba(255,101,132,.2);border-radius:12px;font-family:var(--font-body);font-size:.9rem;cursor:pointer;}
 
 /* MULTI-SELECT SUBJECT PICKER (add subjects to folder) */
@@ -390,6 +402,35 @@ body.deck-mode{overflow:hidden;}
   </div>
   <div id="error-box" class="error-box" style="display:none"></div>
   <button class="btn-primary" id="generate-btn" onclick="generateFlashcards()" disabled>✨ Flashcards Generate Karo</button>
+  <button class="btn-primary" id="compare-btn" onclick="generateFlashcardsCompare()" disabled style="display:none;margin-top:10px;background:linear-gradient(135deg,#0d9488,#0891b2);">⚖️ Dono Try Karke Compare Karo</button>
+</div>
+
+<!-- COMPARE RESULTS -->
+<div class="screen" id="screen-compare">
+  <div class="screen-title">⚖️ Compare Karo</div>
+  <div class="screen-sub">Dono providers ke results dekho, behtar wala chuno</div>
+
+  <div class="cmp-col-wrap">
+    <div class="cmp-col">
+      <div class="cmp-col-header">
+        <span>✦ Gemini</span>
+        <span class="cmp-count" id="cmp-gemini-count">—</span>
+      </div>
+      <div class="cmp-preview" id="cmp-gemini-preview"></div>
+      <button class="btn-primary" id="cmp-pick-gemini" onclick="pickCompareResult('gemini')" style="margin-top:10px;">✅ Gemini Wala Use Karo</button>
+    </div>
+
+    <div class="cmp-col">
+      <div class="cmp-col-header">
+        <span>⚡ Groq</span>
+        <span class="cmp-count" id="cmp-groq-count">—</span>
+      </div>
+      <div class="cmp-preview" id="cmp-groq-preview"></div>
+      <button class="btn-primary" id="cmp-pick-groq" onclick="pickCompareResult('groq')" style="margin-top:10px;background:linear-gradient(135deg,#0d9488,#0891b2);">✅ Groq Wala Use Karo</button>
+    </div>
+  </div>
+
+  <button class="modal-cancel" onclick="showScreen('add')" style="width:100%;margin-top:16px;">← Cancel</button>
 </div>
 
 <!-- LOADING -->
@@ -414,21 +455,48 @@ body.deck-mode{overflow:hidden;}
 <!-- API KEY + STATS -->
 <div class="screen" id="screen-api">
   <div class="screen-title" style="margin-bottom:6px">🔑 API Key & Stats</div>
-  <div class="screen-sub">Gemini key + daily progress dekho</div>
+  <div class="screen-sub">AI provider chuno aur key daalo</div>
 
-  <div class="api-info">
-    <strong>API Key kahan se milegi?</strong><br/>
-    1. <a class="api-link" href="https://aistudio.google.com" target="_blank">aistudio.google.com</a> kholo<br/>
-    2. Google se login karo<br/>
-    3. <strong>"Get API Key"</strong> → <strong>"Create API Key"</strong><br/>
-    4. Copy karke neeche paste karo 👇
-  </div>
+  <!-- PROVIDER SWITCHER -->
   <div class="input-group">
-    <label class="input-lbl">Gemini API Key</label>
-    <input class="inp" id="api-key-input" placeholder="AIzaSy..." type="password"/>
+    <label class="input-lbl">AI Provider</label>
+    <div style="display:flex;gap:8px;">
+      <div class="type-chip provider-chip" id="provider-gemini" onclick="setAiProvider('gemini')" style="flex:1;">✦ Gemini</div>
+      <div class="type-chip provider-chip" id="provider-groq" onclick="setAiProvider('groq')" style="flex:1;">⚡ Groq</div>
+    </div>
   </div>
-  <button class="btn-primary" onclick="saveApiKey()">💾 Key Save Karo</button>
-  <div class="api-saved" id="api-saved">✅ Saved!</div>
+
+  <div id="gemini-key-group">
+    <div class="api-info">
+      <strong>Gemini API Key kahan se milegi?</strong><br/>
+      1. <a class="api-link" href="https://aistudio.google.com" target="_blank">aistudio.google.com</a> kholo<br/>
+      2. Google se login karo<br/>
+      3. <strong>"Get API Key"</strong> → <strong>"Create API Key"</strong><br/>
+      4. Copy karke neeche paste karo 👇
+    </div>
+    <div class="input-group">
+      <label class="input-lbl">Gemini API Key</label>
+      <input class="inp" id="api-key-input" placeholder="AIzaSy..." type="password"/>
+    </div>
+    <button class="btn-primary" onclick="saveApiKey()">💾 Key Save Karo</button>
+    <div class="api-saved" id="api-saved">✅ Saved!</div>
+  </div>
+
+  <div id="groq-key-group" style="display:none;">
+    <div class="api-info">
+      <strong>Groq API Key kahan se milegi?</strong><br/>
+      1. <a class="api-link" href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a> kholo<br/>
+      2. Login/Signup karo (free hai)<br/>
+      3. <strong>"Create API Key"</strong> pe tap karo<br/>
+      4. Copy karke neeche paste karo 👇
+    </div>
+    <div class="input-group">
+      <label class="input-lbl">Groq API Key</label>
+      <input class="inp" id="groq-key-input" placeholder="gsk_..." type="password"/>
+    </div>
+    <button class="btn-primary" onclick="saveGroqApiKey()">💾 Key Save Karo</button>
+    <div class="api-saved" id="groq-saved">✅ Saved!</div>
+  </div>
 
   <!-- DAILY STATS SECTION -->
   <div style="margin-top:28px;">
@@ -597,6 +665,8 @@ body.deck-mode{overflow:hidden;}
 // ═══════════════════════════════════════════════════
 const STORAGE_KEY   = 'flashsnap_v10';
 const API_KEY_STORE = 'flashsnap_gemini_apikey';
+const GROQ_KEY_STORE = 'flashsnap_groq_apikey';
+const AI_PROVIDER_STORE = 'flashsnap_ai_provider';
 const SCORES_KEY    = 'flashsnap_scores_v10';
 const FOLDER_KEY    = 'flashsnap_folders_v2';
 const STARRED_KEY   = 'flashsnap_starred_v1';
@@ -715,6 +785,16 @@ function saveStarred(d){ _cache.starred = d; idbSet('starred', d).catch(console.
 function getDailyStats(){ return _cache.daily; }
 function saveDailyStats(d){ _cache.daily = d; idbSet('daily', d).catch(console.error); }
 function getApiKey(){ return localStorage.getItem(API_KEY_STORE)||''; }
+function getGroqApiKey(){ return localStorage.getItem(GROQ_KEY_STORE)||''; }
+function getAiProvider(){ return localStorage.getItem(AI_PROVIDER_STORE)||'gemini'; }
+function setAiProvider(p){
+  localStorage.setItem(AI_PROVIDER_STORE, p);
+  document.querySelectorAll('.provider-chip').forEach(el=>el.classList.remove('active'));
+  const chip = document.getElementById('provider-'+p);
+  if(chip) chip.classList.add('active');
+  document.getElementById('gemini-key-group').style.display = p==='gemini' ? 'block' : 'none';
+  document.getElementById('groq-key-group').style.display = p==='groq' ? 'block' : 'none';
+}
 
 // ── COMPRESS IMAGE ────────────────────────────────────
 function compressImage(base64, mimeType, cb){
@@ -745,6 +825,15 @@ function saveApiKey(){
   setTimeout(()=> el.style.display = 'none', 2500);
 }
 
+function saveGroqApiKey(){
+  const k = document.getElementById('groq-key-input').value.trim();
+  if(!k){ alert('Key daalo!'); return; }
+  localStorage.setItem(GROQ_KEY_STORE, k);
+  const el = document.getElementById('groq-saved');
+  el.style.display = 'block';
+  setTimeout(()=> el.style.display = 'none', 2500);
+}
+
 function escapeHtml(t){ return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 // ═══════════════════════════════════════════════════
@@ -770,7 +859,12 @@ function showScreen(name){
   document.body.classList.remove('deck-mode');
   if(name === 'home') renderHome();
   if(name === 'add') resetAdd();
-  if(name === 'api'){ const sv = getApiKey(); if(sv) document.getElementById('api-key-input').value = sv; renderDailyStats(); }
+  if(name === 'api'){
+    const sv = getApiKey(); if(sv) document.getElementById('api-key-input').value = sv;
+    const gv = getGroqApiKey(); if(gv) document.getElementById('groq-key-input').value = gv;
+    setAiProvider(getAiProvider());
+    renderDailyStats();
+  }
   if(name === 'manual'){ populateManualSubjects(); manualTempCards = []; document.getElementById('manual-saved-wrap').style.display = 'none'; updateManualPreview(); }
 }
 
@@ -1900,6 +1994,10 @@ function resetAdd(){
   document.getElementById('preview-img').style.display='none';
   document.getElementById('error-box').style.display='none';
   document.getElementById('generate-btn').disabled=true;
+  const cmpBtn=document.getElementById('compare-btn');
+  const bothKeysExist = getApiKey() && getGroqApiKey();
+  cmpBtn.style.display = bothKeysExist ? 'block' : 'none';
+  cmpBtn.disabled=true;
   imageBase64=null; imageType=null;
 }
 
@@ -1928,7 +2026,12 @@ function handleFile(file){
   r.readAsDataURL(file);
 }
 
-function checkBtn(){ document.getElementById('generate-btn').disabled=!(document.getElementById('subject-name').value.trim() && imageBase64); }
+function checkBtn(){
+  const ready=!!(document.getElementById('subject-name').value.trim() && imageBase64);
+  document.getElementById('generate-btn').disabled=!ready;
+  const cmpBtn=document.getElementById('compare-btn');
+  if(cmpBtn) cmpBtn.disabled=!ready;
+}
 
 // Removes cards where the exact same question + exact same answer appears more than once
 function removeDuplicateCards(cards){
@@ -1952,13 +2055,9 @@ function removeDuplicateCards(cards){
   return result;
 }
 
-async function generateFlashcards(){
-  const name=document.getElementById('subject-name').value.trim();
-  const apiKey=getApiKey();
-  if(!apiKey){ showError('⚠️ Pehle 📊 Stats tab mein key daalo!'); return; }
-  if(!imageBase64||!name){ showError('Subject naam aur screenshot dono daalo!'); return; }
-  showScreen('loading');
-
+// Core: calls the given provider's API with the given image, returns a clean cards array.
+// Does NOT save anything — caller decides what to do with the result.
+async function fetchCardsFromProvider(provider, apiKey, imgB64, imgType, loadingMsgEl){
   const prompt=`You are an expert medical flashcard generator for Indian PG exams (NEET PG, AIIMS, USMLE).
 
 Your job: extract ONLY the facts that are ACTUALLY WRITTEN in this screenshot. Do NOT add outside knowledge, do NOT add extra facts that aren't visible in the image, and do NOT pad the count with generic or invented questions.
@@ -2005,7 +2104,7 @@ Cover every single fact in the image — don't skip anything. Just don't make tw
             {method:'POST',headers:{'Content-Type':'application/json'},
             body:JSON.stringify({
               contents:[{parts:[
-                {inline_data:{mime_type:imageType,data:imageBase64}},
+                {inline_data:{mime_type:imgType,data:imgB64}},
                 {text:prompt}
               ]}],
               generationConfig:{temperature:0.1,maxOutputTokens:8192,thinkingConfig:{thinkingBudget:0}}
@@ -2017,21 +2116,19 @@ Cover every single fact in the image — don't skip anything. Just don't make tw
             const status=data.error.status||'';
             const isQuota=status==='RESOURCE_EXHAUSTED'||msg.includes('quota')||msg.includes('429');
             const isOverload=msg.includes('high demand')||msg.includes('503')||msg.includes('overloaded');
-            const lp=document.getElementById('loading-msg');
 
             if(isQuota){
-              // quota khatam — turant doosra model try karo, retry mat karo isi model pe
               if(mi<MODELS.length-1){
-                if(lp) lp.textContent=`${model} quota khatam — ${MODELS[mi+1]} try kar rahe hain...`;
+                if(loadingMsgEl) loadingMsgEl.textContent=`${model} quota khatam — ${MODELS[mi+1]} try kar rahe hain...`;
                 await new Promise(r=>setTimeout(r,1500));
-                break; // next model
+                break;
               }
-              throw new Error('Saare models ki free quota khatam ho gayi hai. Kuch der (1-2 min) wait karo ya naya API key try karo.');
+              throw new Error('Saare Gemini models ki free quota khatam ho gayi hai. Kuch der (1-2 min) wait karo ya naya API key try karo.');
             }
 
             if(isOverload && attempt<retries){
               const wait=attempt*8000;
-              if(lp) lp.textContent=`Server busy — ${attempt}/${retries} retry (${wait/1000}s wait)...`;
+              if(loadingMsgEl) loadingMsgEl.textContent=`Server busy — ${attempt}/${retries} retry (${wait/1000}s wait)...`;
               await new Promise(r=>setTimeout(r,wait));
               continue;
             }
@@ -2039,39 +2136,90 @@ Cover every single fact in the image — don't skip anything. Just don't make tw
           }
           return data;
         }catch(e){
-          if(e.message&&e.message.includes('Saare models')) throw e;
+          if(e.message&&e.message.includes('Saare Gemini')) throw e;
           if(attempt===retries && mi===MODELS.length-1) throw e;
-          if(attempt===retries) break; // try next model
+          if(attempt===retries) break;
           await new Promise(r=>setTimeout(r,attempt*8000));
         }
       }
     }
-    throw new Error('Sabhi models fail ho gaye. Thodi der baad try karo.');
+    throw new Error('Sabhi Gemini models fail ho gaye. Thodi der baad try karo.');
   }
 
-  try{
-    const data=await callGemini();
-    let raw=data.candidates[0].content.parts[0].text.trim();
-    let clean=raw.replace(/```json|```/g,'').trim();
-    const si=clean.indexOf('['), ei=clean.lastIndexOf(']');
-    if(si!==-1&&ei!==-1) clean=clean.substring(si,ei+1);
-    let cards;
-    try{ cards=JSON.parse(clean); }
-    catch(e){
-      const lb=clean.lastIndexOf('},');
-      if(lb===-1) throw new Error('Parse fail. Chhota screenshot try karo.');
-      cards=JSON.parse(clean.substring(0,lb+1)+']');
+  async function callGroq(retries=3){
+    const model='meta-llama/llama-4-scout-17b-16e-instruct';
+    for(let attempt=1;attempt<=retries;attempt++){
+      try{
+        const res=await fetch('https://api.groq.com/openai/v1/chat/completions',
+          {method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`},
+          body:JSON.stringify({
+            model,
+            messages:[{
+              role:'user',
+              content:[
+                {type:'text',text:prompt},
+                {type:'image_url',image_url:{url:`data:${imgType};base64,${imgB64}`}}
+              ]
+            }],
+            temperature:0.1,
+            max_tokens:8192
+          })}
+        );
+        const data=await res.json();
+        if(data.error){
+          const msg=data.error.message||'';
+          const isQuota=msg.includes('quota')||msg.includes('rate_limit')||res.status===429;
+          if(isQuota && attempt<retries){
+            const wait=attempt*6000;
+            if(loadingMsgEl) loadingMsgEl.textContent=`Groq quota/rate limit — ${attempt}/${retries} retry (${wait/1000}s wait)...`;
+            await new Promise(r=>setTimeout(r,wait));
+            continue;
+          }
+          throw new Error(msg||'Groq API error');
+        }
+        const text = data.choices?.[0]?.message?.content || '';
+        return { candidates:[{content:{parts:[{text}]}}] };
+      }catch(e){
+        if(attempt===retries) throw e;
+        await new Promise(r=>setTimeout(r,attempt*6000));
+      }
     }
-    cards=cards.filter(card=>{
-      const q=card.question.toLowerCase(), a=card.answer.toLowerCase().trim();
-      const labeledPattern=/labeled ['"]?([^'"?]+)['"]?/i.exec(card.question);
-      const labeledMatch=labeledPattern&&labeledPattern[1].toLowerCase().trim()===a;
-      const generic=['main topic','what does this image','what is shown here'].some(p=>q.includes(p));
-      return !labeledMatch && !generic;
-    });
+  }
 
-    // Duplicate / near-duplicate question removal (AI sometimes repeats the same fact)
-    cards = removeDuplicateCards(cards);
+  const data = provider==='groq' ? await callGroq() : await callGemini();
+  let raw=data.candidates[0].content.parts[0].text.trim();
+  let clean=raw.replace(/```json|```/g,'').trim();
+  const si=clean.indexOf('['), ei=clean.lastIndexOf(']');
+  if(si!==-1&&ei!==-1) clean=clean.substring(si,ei+1);
+  let cards;
+  try{ cards=JSON.parse(clean); }
+  catch(e){
+    const lb=clean.lastIndexOf('},');
+    if(lb===-1) throw new Error('Parse fail. Chhota screenshot try karo.');
+    cards=JSON.parse(clean.substring(0,lb+1)+']');
+  }
+  cards=cards.filter(card=>{
+    const q=card.question.toLowerCase(), a=card.answer.toLowerCase().trim();
+    const labeledPattern=/labeled ['"]?([^'"?]+)['"]?/i.exec(card.question);
+    const labeledMatch=labeledPattern&&labeledPattern[1].toLowerCase().trim()===a;
+    const generic=['main topic','what does this image','what is shown here'].some(p=>q.includes(p));
+    return !labeledMatch && !generic;
+  });
+  cards = removeDuplicateCards(cards);
+  return cards;
+}
+
+async function generateFlashcards(){
+  const name=document.getElementById('subject-name').value.trim();
+  const provider=getAiProvider();
+  const apiKey = provider==='groq' ? getGroqApiKey() : getApiKey();
+  if(!apiKey){ showError(`⚠️ Pehle 📊 Stats tab mein ${provider==='groq'?'Groq':'Gemini'} key daalo!`); return; }
+  if(!imageBase64||!name){ showError('Subject naam aur screenshot dono daalo!'); return; }
+  showScreen('loading');
+
+  try{
+    const loadingMsgEl=document.getElementById('loading-msg');
+    const cards = await fetchCardsFromProvider(provider, apiKey, imageBase64, imageType, loadingMsgEl);
 
     const subjects=getSubjects();
     const idx=Object.keys(subjects).length;
@@ -2092,6 +2240,98 @@ Cover every single fact in the image — don't skip anything. Just don't make tw
   }catch(err){
     showScreen('add'); showError('Error: '+err.message);
   }
+}
+
+// ═══════════════════════════════════════════════════
+// COMPARE MODE — generate with both providers, let user pick the better result
+// ═══════════════════════════════════════════════════
+let compareResults = null; // { gemini: cards[]|null, groq: cards[]|null, name, imgB64, imgType }
+
+async function generateFlashcardsCompare(){
+  const name=document.getElementById('subject-name').value.trim();
+  const geminiKey=getApiKey(), groqKey=getGroqApiKey();
+  if(!geminiKey||!groqKey){ showError('Compare karne ke liye dono (Gemini + Groq) keys honi chahiye!'); return; }
+  if(!imageBase64||!name){ showError('Subject naam aur screenshot dono daalo!'); return; }
+  showScreen('loading');
+  const loadingMsgEl=document.getElementById('loading-msg');
+  if(loadingMsgEl) loadingMsgEl.textContent='Dono AI providers se generate ho raha hai...';
+
+  const [geminiResult, groqResult] = await Promise.allSettled([
+    fetchCardsFromProvider('gemini', geminiKey, imageBase64, imageType, null),
+    fetchCardsFromProvider('groq', groqKey, imageBase64, imageType, null)
+  ]);
+
+  compareResults = {
+    name,
+    imgB64: imageBase64,
+    imgType: imageType,
+    gemini: geminiResult.status==='fulfilled' ? geminiResult.value : null,
+    groq: groqResult.status==='fulfilled' ? groqResult.value : null,
+    geminiError: geminiResult.status==='rejected' ? geminiResult.reason.message : null,
+    groqError: groqResult.status==='rejected' ? groqResult.reason.message : null
+  };
+
+  if(!compareResults.gemini && !compareResults.groq){
+    showScreen('add');
+    showError('Dono providers fail ho gaye: '+(compareResults.geminiError||'')+' / '+(compareResults.groqError||''));
+    return;
+  }
+
+  renderCompareScreen();
+}
+
+function renderCompareScreen(){
+  const r = compareResults;
+  document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('screen-compare').classList.add('active');
+
+  function buildPreview(providerLabel, cards, errorMsg){
+    if(errorMsg){
+      return `<div class="cmp-empty">❌ ${providerLabel} fail ho gaya<br/><span style="font-size:.7rem;color:var(--dim)">${escapeHtml(errorMsg)}</span></div>`;
+    }
+    if(!cards || !cards.length){
+      return `<div class="cmp-empty">Koi card nahi mila</div>`;
+    }
+    return cards.slice(0,6).map(c=>`
+      <div class="cmp-card-mini">
+        <div class="cmp-q">${escapeHtml(c.question)}</div>
+        <div class="cmp-a">${escapeHtml(c.answer)}</div>
+      </div>
+    `).join('') + (cards.length>6 ? `<div class="cmp-more">+${cards.length-6} aur cards...</div>` : '');
+  }
+
+  document.getElementById('cmp-gemini-count').textContent = r.gemini ? `${r.gemini.length} cards` : 'Failed';
+  document.getElementById('cmp-groq-count').textContent = r.groq ? `${r.groq.length} cards` : 'Failed';
+  document.getElementById('cmp-gemini-preview').innerHTML = buildPreview('Gemini', r.gemini, r.geminiError);
+  document.getElementById('cmp-groq-preview').innerHTML = buildPreview('Groq', r.groq, r.groqError);
+
+  document.getElementById('cmp-pick-gemini').disabled = !r.gemini;
+  document.getElementById('cmp-pick-groq').disabled = !r.groq;
+}
+
+function pickCompareResult(provider){
+  const r = compareResults;
+  const cards = provider==='gemini' ? r.gemini : r.groq;
+  if(!cards) return;
+
+  const subjects=getSubjects();
+  const idx=Object.keys(subjects).length;
+  const key=r.name.toLowerCase().replace(/\s+/g,'-')+'-'+Date.now();
+  subjects[key]={
+    name: r.name, emoji:EMOJIS[idx%EMOJIS.length], color:COLORS[idx%COLORS.length],
+    date:new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}),
+    cards,
+    screenshotData:'data:'+r.imgType+';base64,'+r.imgB64
+  };
+  saveSubjectsData(subjects);
+  compareResults = null;
+  currentSubjectKey=key; deckSubjectKey=key;
+  document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  renderDetail(key);
+  document.getElementById('screen-detail').classList.add('active');
+  document.body.classList.add('deck-mode');
 }
 
 function showError(msg){ const el=document.getElementById('error-box'); el.textContent=msg; el.style.display='block'; }
